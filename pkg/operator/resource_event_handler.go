@@ -24,6 +24,7 @@ func NewResourceEventHandler(f Selector, q workqueue.Interface) *resourceEventHa
 	}
 }
 
+// Add object to the queue on valid label
 func (r *resourceEventHandler) Add(obj interface{}) {
 	if obj == nil {
 		log.Error("Add with nil obj, skip")
@@ -48,6 +49,7 @@ func (r *resourceEventHandler) Add(obj interface{}) {
 	})
 }
 
+// Update object to the queue on valid label
 func (r *resourceEventHandler) Update(oldObj, newObj interface{}) {
 	if newObj == nil || oldObj == nil {
 		log.Errorf("Update with Nil Object old: %T new: %T", oldObj, newObj)
@@ -74,6 +76,7 @@ func (r *resourceEventHandler) Update(oldObj, newObj interface{}) {
 	})
 }
 
+// Delete object to the queue on valid label
 func (r *resourceEventHandler) Delete(obj interface{}) {
 	if obj == nil {
 		log.Error("Delete with nil obj, skip")

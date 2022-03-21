@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// ErrNoAppLabelFound it happens on label not found on resource
 var ErrNoAppLabelFound = errors.New("no app label found ")
 
 type selector struct {

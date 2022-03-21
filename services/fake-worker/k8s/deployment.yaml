@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swarm-worker
+  namespace: swarm
+  labels:
+    app: swarm-worker
+spec:
+  selector:
+    matchLabels:
+      app: swarm-worker
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: swarm-worker
+    spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swarm-worker-config
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: swarm-worker
+          image: swarm-worker
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config
+          command: [ "/app/worker" ]
+          args: [ "worker" ]
+          resources:
+            limits:
+              memory: 0.250G
+              cpu: 100m
+            requests:
+              memory: 0.05G
+              cpu: 5m
+          ports:
+            - containerPort: 9090
+              name: http
+              protocol: TCP
+          env:
+            - name: CONFIG_PATH
+              value: "/app/config"
+          livenessProbe:
+            httpGet:
+              path: /internal/health
+              port: 9090
+            initialDelaySeconds: 2
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /internal/health
+              port: 9090
+            initialDelaySeconds: 2
+            timeoutSeconds: 2

@@ -22,7 +22,7 @@ func NewProvider(cl kubernetes.Interface, namespace string) *Provider {
 }
 
 // RefreshPod deletes pod
-func (p *Provider) RefreshPod(ctx context.Context, name string) error {
+func (p *Provider) Refresh(ctx context.Context, name string) error {
 	err := p.client.CoreV1().Pods(p.namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to delete pod %s error %v", name, err)

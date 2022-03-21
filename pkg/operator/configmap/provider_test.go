@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/marcosQuesada/k8s-lab/pkg/config"
-	"github.com/marcosQuesada/k8s-lab/services/pool-config-controller/internal/infra/k8s"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 )
@@ -16,7 +16,7 @@ func TestNewProvider_ItUpdatesConfigMapOnAssignWorkload(t *testing.T) {
 	var configMapName = "swarm-worker-config"
 	var deploymentName = "swarm-worker"
 
-	clientset := k8s.BuildExternalClient()
+	clientset := operator.BuildExternalClient()
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), configMapName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestNewProvider_ItGetsWorkloadsFromConfigMap(t *testing.T) {
 	var configMapName = "swarm-worker-config"
 	var deploymentName = "swarm-worker"
 
-	clientset := k8s.BuildExternalClient()
+	clientset := operator.BuildExternalClient()
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), configMapName, metav1.GetOptions{})
 	if err != nil {
 		t.Fatal(err)

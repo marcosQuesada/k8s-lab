@@ -30,7 +30,7 @@ func TestNewProvider_ItDeletesPodToRefreshByNewOne(t *testing.T) {
 	}
 
 	p := NewProvider(clientSet, namespace)
-	if err := p.RefreshPod(context.Background(), name); err != nil {
+	if err := p.Refresh(context.Background(), name); err != nil {
 		t.Fatalf("unexepcted error refreshing pod %s, got %v", name, err)
 	}
 
