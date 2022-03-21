@@ -1,0 +1,45 @@
+apiVersion: "k8slab.info/v1alpha1"
+kind: "Swarm"
+metadata:
+  name: "worker-config"
+  namespace: "swarm"
+spec:
+  version: 1
+  expected-size: 4
+  size: 3
+  members:
+    - name: "swarm-worker-0"
+      address: "10.9.9.1"
+      created_at: 1629323288396801946
+      jobs:
+        - stream:xxrtve1
+        - stream:xxrtve2
+        - stream:zrtve2:new
+        - stream:zrtve1:new
+        - stream:zrtve0:new
+        - stream:cctv0:updated
+        - stream:history:new
+        - stream:foo:new
+        - stream:xxctv3:new
+        - stream:cctv3:updated
+        - stream:xxctv0:updated
+        - stream:xxctv10:updated
+        - stream:xxctv11:updated
+        - stream:xxctv12:updated
+    - name: "swarm-worker-1"
+      address: "10.9.9.2"
+      created_at: 1629323288396807946
+      jobs:
+        - stream:xxctv12:updated
+        - stream:xxctv13:updated
+        - stream:xxctv14:updated
+        - stream:yxctv1:updated
+        - stream:yxctv2:updated
+        - stream:yxctv3:updated
+        - stream:xabcn0:updated
+        - stream:xacb01:updated
+        - stream:xacb02:updated
+        - stream:xacb03:updated
+        - stream:xacb04:updated
+        - stream:sportnews0:updated
+        - stream:cars:new

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swarm-controller
+  namespace: swarm
+  labels:
+    app: swarm-controller
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: swarm-controller
+  template:
+    metadata:
+      labels:
+        app: swarm-controller
+    spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: swarm-controller-config
+      containers:
+        - name: swarm-controller
+          image: swarm-controller
+          imagePullPolicy: Never
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config
+          command: [ "/app/controller" ]
+          args: [ "internal" ]
+          resources:
+            limits:
+              memory: 0.250G
+              cpu: 100m
+            requests:
+              memory: 0.05G
+              cpu: 5m
+          env:
+            - name: NAMESPACE
+              value: "swarm"
+            - name: WATCHED_LABEL
+              value: "swarm-worker"
+            - name: CONFIG_PATH
+              value: "/app/config"

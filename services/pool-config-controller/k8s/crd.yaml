@@ -1,0 +1,81 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: swarms.k8slab.info
+spec:
+  group: k8slab.info
+  scope: Namespaced
+  names:
+    plural: swarms
+    singular: swarm
+    kind: Swarm
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: { }
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            spec:
+              type: object
+              required:
+                - expected-size
+              properties:
+                version:
+                  type: integer
+                expected-size:
+                  type: integer
+                  minimum: 0
+                size:
+                  type: integer
+                members:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - created_at
+                    properties:
+                      index:
+                        type: integer
+                      name:
+                        type: string
+                      address:
+                        type: string
+                      created_at:
+                        type: integer
+                      jobs:
+                        type: array
+                        items:
+                          type: string
+                      state:
+                        type: object
+                        properties:
+                          phase:
+                            type: string
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+      additionalPrinterColumns:
+        - name: Version
+          type: integer
+          jsonPath: .spec.version
+        - name: ExpectedSize
+          type: integer
+          description: The number of desired members in swarm
+          jsonPath: .spec.expected-size
+        - name: Size
+          type: integer
+          jsonPath: .spec.size
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+        - name: Status
+          type: string
+          jsonPath: .status.phase

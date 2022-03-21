@@ -1,0 +1,53 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-swarm-role
+  namespace: swarm
+rules:
+  - apiGroups:
+      - apps
+    resources:
+      - pods
+      - statefulsets
+    verbs:
+      - get
+      - watch
+      - list
+      - patch
+      - delete
+  - apiGroups: [""]
+    resources:
+      - pods
+      - statefulsets
+      - configmaps
+    verbs:
+      - get
+      - watch
+      - list
+      - update
+      - delete
+  - apiGroups: ["k8slab.info"]
+    resources:
+      - swarms
+    verbs:
+      - get
+      - watch
+      - list
+      - update
+      - delete
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-swarm-rbac
+  namespace: swarm
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: swarm
+roleRef:
+  kind: ClusterRole
+  name: k8s-swarm-role
+  apiGroup: rbac.authorization.k8s.io
+

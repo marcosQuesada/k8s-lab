@@ -1,0 +1,17 @@
+workloads:
+  swarm-worker-0:
+    jobs:
+      - "stream:xxrtve1"
+      - "stream:xxrtve2"
+      - "stream:zrtve2:new"
+      - "stream:zrtve1:new"
+      - "stream:zrtve0:new"
+      - "stream:cctv0:updated"
+      - "stream:xxctv3:new"
+      - "stream:cctv3:updated"
+      - "stream:xxctv0:updated"
+      - "stream:xxctv10:updated"
+      - "stream:xxctv11:updated"
+      - "stream:xxctv12:updated"
+
+version: 1
