@@ -16,7 +16,7 @@ func TestController_RunInitializesAccessingListWatcher(t *testing.T) {
 	w := &fakeListWatcher{watcher: wi}
 	rh := &fakeResourceHandler{}
 	eh := &fakeEventHandler{}
-	ep := NewEventProcessor(&apiv1.Pod{}, w, eh, rh)
+	ep := NewEventProcessor(w, eh, rh)
 	done := make(chan struct{})
 	ep.Run(done)
 
@@ -39,7 +39,7 @@ func TestController_HandlePodCreationAndIntrospectIndexer(t *testing.T) {
 	w := &fakeListWatcher{watcher: wi, namespace: namespace, name: name}
 	rh := &fakeResourceHandler{}
 	eh := &fakeEventHandler{}
-	ep := NewEventProcessor(&apiv1.Pod{}, w, eh, rh)
+	ep := NewEventProcessor(w, eh, rh)
 	done := make(chan struct{})
 	defer close(done)
 	ep.Run(done)
@@ -73,7 +73,7 @@ func TestController_HandlePodUpdate(t *testing.T) {
 	w := &fakeListWatcher{watcher: wi, namespace: namespace, name: name}
 	rh := &fakeResourceHandler{}
 	eh := &fakeEventHandler{}
-	ep := NewEventProcessor(&apiv1.Pod{}, w, eh, rh)
+	ep := NewEventProcessor(w, eh, rh)
 	done := make(chan struct{})
 	defer close(done)
 	ep.Run(done)
@@ -99,7 +99,7 @@ func TestController_HandlePodDeletion(t *testing.T) {
 	w := &fakeListWatcher{watcher: wi, namespace: namespace, name: name}
 	rh := &fakeResourceHandler{}
 	eh := &fakeEventHandler{}
-	ep := NewEventProcessor(&apiv1.Pod{}, w, eh, rh)
+	ep := NewEventProcessor(w, eh, rh)
 
 	pod := getFakePod(namespace, name)
 	ev := &updateEvent{
@@ -143,6 +143,10 @@ func (f *fakeListWatcher) Watch(options metav1.ListOptions) (watch.Interface, er
 	defer f.mutex.Unlock()
 	f.watchCalled++
 	return f.watcher, nil
+}
+
+func (f *fakeListWatcher) Object() runtime.Object {
+	return &apiv1.Pod{}
 }
 
 func (f *fakeListWatcher) listed() int {

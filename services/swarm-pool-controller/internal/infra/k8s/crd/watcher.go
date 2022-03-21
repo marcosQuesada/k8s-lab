@@ -3,6 +3,7 @@ package crd
 import (
 	"context"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/apis/swarm/v1alpha1"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/generated/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,4 +31,8 @@ func (a *listWatcherAdapter) List(options metav1.ListOptions) (runtime.Object, e
 // Watch creates a stream of swarm events in watched namespace
 func (a *listWatcherAdapter) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return a.client.K8slabV1alpha1().Swarms(a.namespace).Watch(context.Background(), options)
+}
+
+func (a *listWatcherAdapter) Object() runtime.Object {
+	return &v1alpha1.Swarm{}
 }

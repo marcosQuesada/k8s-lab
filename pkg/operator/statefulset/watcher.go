@@ -3,6 +3,8 @@ package statefulset
 import (
 	"context"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
+	appsv1 "k8s.io/api/apps/v1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -30,4 +32,8 @@ func (a *listWatcherAdapter) List(options metav1.ListOptions) (runtime.Object, e
 // Watch creates a stream of statefulset events in watched namespace
 func (a *listWatcherAdapter) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return a.client.AppsV1().StatefulSets(a.namespace).Watch(context.Background(), options)
+}
+
+func (a *listWatcherAdapter) Object() runtime.Object {
+	return &appsv1.StatefulSet{}
 }

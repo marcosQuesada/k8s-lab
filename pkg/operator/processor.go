@@ -15,6 +15,7 @@ import (
 type ListWatcher interface {
 	List(options metav1.ListOptions) (runtime.Object, error)
 	Watch(options metav1.ListOptions) (watch.Interface, error)
+	Object() runtime.Object
 }
 
 // ResourceHandler gets called on each resource variation consumed from queue
@@ -38,13 +39,13 @@ type eventProcessor struct {
 }
 
 // NewEventProcessor instantiates EventProcessor
-func NewEventProcessor(o runtime.Object, w ListWatcher, eh EventHandler, h ResourceHandler) *eventProcessor {
+func NewEventProcessor(w ListWatcher, eh EventHandler, h ResourceHandler) *eventProcessor {
 	indexer, informer := cache.NewIndexerInformer(
 		&cache.ListWatch{
 			ListFunc:  w.List,
 			WatchFunc: w.Watch,
 		},
-		o,
+		w.Object(),
 		0,
 		cache.ResourceEventHandlerFuncs{
 			AddFunc:    eh.Add,

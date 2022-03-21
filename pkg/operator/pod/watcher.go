@@ -3,6 +3,7 @@ package pod
 import (
 	"context"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
+	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,4 +32,8 @@ func (a *listWatcherAdapter) List(options metav1.ListOptions) (runtime.Object, e
 // Watch creates a stream of pod events in watched namespace
 func (a *listWatcherAdapter) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return a.client.CoreV1().Pods(a.namespace).Watch(context.Background(), options)
+}
+
+func (a *listWatcherAdapter) Object() runtime.Object {
+	return &apiv1.Pod{}
 }

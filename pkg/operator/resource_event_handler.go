@@ -11,7 +11,7 @@ type resourceEventHandler struct {
 	queue workqueue.Interface
 }
 
-func NewResourceEventHandler(q workqueue.Interface) *resourceEventHandler {
+func NewResourceEventHandler(q workqueue.Interface) EventHandler {
 	return &resourceEventHandler{
 		queue: q,
 	}

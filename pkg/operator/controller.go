@@ -13,6 +13,7 @@ import (
 const defaultConciliationFrequency = time.Second * 5
 const maxRequeue = 5
 
+// EventProcessor handles event updates
 type EventProcessor interface {
 	Run(stopCh chan struct{})
 	Handle(ctx context.Context, ev Event) error
@@ -24,6 +25,7 @@ type controller struct {
 	conciliationFrequency time.Duration
 }
 
+// NewController instantiates controller
 func NewController(ep EventProcessor, q workqueue.RateLimitingInterface) *controller {
 	return &controller{
 		processor:             ep,
@@ -85,5 +87,23 @@ func (c *controller) handleError(key interface{}, err error) {
 	c.queue.Forget(key)
 	utilruntime.HandleError(err)
 	log.Errorf("event handled with key %v out of the queue: %v", key, err)
+
+}
+
+// Controller defines resource controller runner
+type Controller interface {
+	Run(chan struct{})
+}
+
+// Build default Controller witch label selector option
+func Build(lw ListWatcher, rh ResourceHandler, watchLabel ...string) Controller {
+	eventQueue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	eventHandler := NewResourceEventHandler(eventQueue)
+	if len(watchLabel) > 0 {
+		eventHandler = NewLabelSelectorMiddleware(watchLabel[0], eventHandler)
+	}
+
+	p := NewEventProcessor(lw, eventHandler, rh)
+	return NewController(p, eventQueue)
 
 }

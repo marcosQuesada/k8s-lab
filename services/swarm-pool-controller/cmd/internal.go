@@ -5,19 +5,16 @@ import (
 	"github.com/gorilla/mux"
 	config2 "github.com/marcosQuesada/k8s-lab/pkg/config"
 	ht "github.com/marcosQuesada/k8s-lab/pkg/http/handler"
-	operator2 "github.com/marcosQuesada/k8s-lab/pkg/operator"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
 	pod2 "github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
-	statefulset2 "github.com/marcosQuesada/k8s-lab/pkg/operator/statefulset"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/statefulset"
 	app2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
 	cht "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/transport/http"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	appsv1 "k8s.io/api/apps/v1"
-	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/util/workqueue"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,12 +30,12 @@ var internalCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("controller internal listening on namespace %s label %s Version %s release date %s http server on port %s", namespace, watchLabel, config2.Commit, config2.Date, config2.HttpPort)
 
-		cl := operator2.BuildInternalClient()
-		swcl := k8s.BuildSwarmInternalClient()
+		cl := operator.BuildInternalClient()
+		swarmCl := k8s.BuildSwarmInternalClient()
 		cm := configmap.NewProvider(cl, namespace, workersConfigMapName, watchLabel)
 		vst := cht.NewVersionProvider(config2.HttpPort)
 		pdl := pod2.NewProvider(cl, namespace)
-		swl := crd.NewProvider(swcl, namespace, watchLabel)
+		swl := crd.NewProvider(swarmCl, namespace, watchLabel)
 		mex := crd.NewProviderMiddleware(cm, swl)
 
 		ex := app2.NewExecutor(mex, vst, pdl)
@@ -47,19 +44,11 @@ var internalCmd = &cobra.Command{
 
 		podLwa := pod2.NewListWatcherAdapter(cl, namespace)
 		podH := pod2.NewHandler(app)
-		podEventQueue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-		podEventHandler := operator2.NewResourceEventHandler(podEventQueue)
-		podEh := operator2.NewLabelSelectorMiddleware(watchLabel, podEventHandler)
-		podEvp := operator2.NewEventProcessor(&apiv1.Pod{}, podLwa, podEh, podH)
-		podCtl := operator2.NewController(podEvp, podEventQueue)
+		podCtl := operator.Build(podLwa, podH)
 
-		stsLwa := statefulset2.NewListWatcherAdapter(cl, namespace)
-		stsH := statefulset2.NewHandler(app)
-		stsEventQueue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-		stsEventHandler := operator2.NewResourceEventHandler(stsEventQueue)
-		stsEh := operator2.NewLabelSelectorMiddleware(watchLabel, stsEventHandler)
-		stsEvp := operator2.NewEventProcessor(&appsv1.StatefulSet{}, stsLwa, stsEh, stsH)
-		stsCtl := operator2.NewController(stsEvp, stsEventQueue)
+		stsLwa := statefulset.NewListWatcherAdapter(cl, namespace)
+		stsH := statefulset.NewHandler(app)
+		stsCtl := operator.Build(stsLwa, stsH)
 
 		stopCh := make(chan struct{})
 		go podCtl.Run(stopCh)
