@@ -157,24 +157,6 @@ func (f *fakeListWatcher) watched() int {
 	return f.watchCalled
 }
 
-type fakeEventHandler struct {
-	totalCreated int
-	totalUpdated int
-	totalDeleted int
-}
-
-func (f *fakeEventHandler) Add(obj interface{}) {
-	f.totalCreated++
-}
-
-func (f *fakeEventHandler) Update(oldObj, newObj interface{}) {
-	f.totalUpdated++
-}
-
-func (f *fakeEventHandler) Delete(obj interface{}) {
-	f.totalDeleted++
-}
-
 type fakeResourceHandler struct {
 	created int
 	updated int

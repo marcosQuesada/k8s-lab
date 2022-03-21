@@ -2,16 +2,14 @@ package operator
 
 import (
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"testing"
 )
 
 func TestResourceEventHandler_AddPodIncludesItemOnQueue(t *testing.T) {
 	name := "swarm-worker-0"
 	namespace := "swarm"
-	s := &fakeSelector{}
 	q := newFakeQueue()
-	reh := NewResourceEventHandler(s, q)
+	reh := NewResourceEventHandler(q)
 	p := getFakePod(namespace, name)
 	reh.Add(&p)
 
@@ -37,9 +35,8 @@ func TestResourceEventHandler_AddPodIncludesItemOnQueue(t *testing.T) {
 func TestResourceEventHandler_UpdatePodIncludesItemOnQueue(t *testing.T) {
 	name := "swarm-worker-0"
 	namespace := "swarm"
-	s := &fakeSelector{}
 	q := newFakeQueue()
-	reh := NewResourceEventHandler(s, q)
+	reh := NewResourceEventHandler(q)
 	p := getFakePod(namespace, name)
 	reh.Update(&p, &p)
 
@@ -65,9 +62,8 @@ func TestResourceEventHandler_UpdatePodIncludesItemOnQueue(t *testing.T) {
 func TestResourceEventHandler_DeletePodIncludesItemOnQueue(t *testing.T) {
 	name := "swarm-worker-0"
 	namespace := "swarm"
-	s := &fakeSelector{}
 	q := newFakeQueue()
-	reh := NewResourceEventHandler(s, q)
+	reh := NewResourceEventHandler(q)
 	p := getFakePod(namespace, name)
 	reh.Delete(&p)
 
@@ -88,10 +84,4 @@ func TestResourceEventHandler_DeletePodIncludesItemOnQueue(t *testing.T) {
 	if expected, got := name, pod.Name; expected != got {
 		t.Fatalf("pod name does not match, expected %s got %s", expected, got)
 	}
-}
-
-type fakeSelector struct{}
-
-func (f fakeSelector) Validate(object runtime.Object) error {
-	return nil
 }

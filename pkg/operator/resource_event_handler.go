@@ -7,20 +7,13 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-// Selector segregates object selection
-type Selector interface {
-	Validate(runtime.Object) error
-}
-
 type resourceEventHandler struct {
-	selector Selector
-	queue    workqueue.Interface
+	queue workqueue.Interface
 }
 
-func NewResourceEventHandler(f Selector, q workqueue.Interface) *resourceEventHandler {
+func NewResourceEventHandler(q workqueue.Interface) *resourceEventHandler {
 	return &resourceEventHandler{
-		selector: f,
-		queue:    q,
+		queue: q,
 	}
 }
 
@@ -31,11 +24,6 @@ func (r *resourceEventHandler) Add(obj interface{}) {
 		return
 	}
 
-	o := obj.(runtime.Object)
-	if err := r.selector.Validate(o); err != nil {
-		return
-	}
-
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("Add MetaNamespaceKeyFunc error %v", err)
@@ -43,6 +31,7 @@ func (r *resourceEventHandler) Add(obj interface{}) {
 	}
 
 	log.Debugf("Add %T: %s", obj, key)
+	o := obj.(runtime.Object)
 	r.queue.Add(&event{
 		key: key,
 		obj: o.DeepCopyObject(),
@@ -56,11 +45,6 @@ func (r *resourceEventHandler) Update(oldObj, newObj interface{}) {
 		return
 	}
 
-	n := newObj.(runtime.Object)
-	if err := r.selector.Validate(n); err != nil {
-		return
-	}
-
 	key, err := cache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		log.Errorf("Patch MetaNamespaceKeyFunc error %v", err)
@@ -69,6 +53,7 @@ func (r *resourceEventHandler) Update(oldObj, newObj interface{}) {
 
 	log.Debugf("Update %T: %s", oldObj, key)
 	o := oldObj.(runtime.Object)
+	n := newObj.(runtime.Object)
 	r.queue.Add(&updateEvent{
 		key:    key,
 		newObj: n.DeepCopyObject(),
@@ -83,11 +68,6 @@ func (r *resourceEventHandler) Delete(obj interface{}) {
 		return
 	}
 
-	o := obj.(runtime.Object)
-	if err := r.selector.Validate(o); err != nil {
-		return
-	}
-
 	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("Delete DeletionHandlingMetaNamespaceKeyFunc error %v", err)
@@ -95,6 +75,7 @@ func (r *resourceEventHandler) Delete(obj interface{}) {
 	}
 
 	log.Debugf("Delete %T: %s", obj, key)
+	o := obj.(runtime.Object)
 	r.queue.Add(&event{
 		key: key,
 		obj: o.DeepCopyObject(),
