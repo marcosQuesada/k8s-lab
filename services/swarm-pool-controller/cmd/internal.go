@@ -12,6 +12,8 @@ import (
 	app2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/pod"
+	statefulset2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
 	cht "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/transport/http"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -43,11 +45,11 @@ var internalCmd = &cobra.Command{
 		app := app2.NewWorkerPool(st, ex)
 
 		podLwa := pod2.NewListWatcherAdapter(cl, namespace)
-		podH := pod2.NewHandler(app)
+		podH := pod.NewHandler(app)
 		podCtl := operator.Build(podLwa, podH)
 
 		stsLwa := statefulset.NewListWatcherAdapter(cl, namespace)
-		stsH := statefulset.NewHandler(app)
+		stsH := statefulset2.NewHandler(app)
 		stsCtl := operator.Build(stsLwa, stsH)
 
 		stopCh := make(chan struct{})

@@ -11,6 +11,8 @@ import (
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
+	pod2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/pod"
+	statefulset2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
 	ht "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/transport/http"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -24,8 +26,8 @@ import (
 // externalCmd represents the external command
 var externalCmd = &cobra.Command{
 	Use:   "external",
-	Short: "swarm external controller, useful on development path",
-	Long:  `swarm internal controller balance configured keys between swarm peers, useful on development path`,
+	Short: "swarm pool external controller, useful on development path",
+	Long:  `swarm pool internal controller balance configured keys between swarm peers, useful on development path`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("controller external listening on namespace %s label %s Version %s release date %s http server on port %s", namespace, watchLabel, cfg.Commit, cfg.Date, cfg.HttpPort)
 
@@ -43,11 +45,11 @@ var externalCmd = &cobra.Command{
 		app := app.NewWorkerPool(st, ex)
 
 		podLwa := pod.NewListWatcherAdapter(cl, namespace)
-		podH := pod.NewHandler(app)
+		podH := pod2.NewHandler(app)
 		podCtl := operator.Build(podLwa, podH, watchLabel)
 
 		stsLwa := statefulset.NewListWatcherAdapter(cl, namespace)
-		stsH := statefulset.NewHandler(app)
+		stsH := statefulset2.NewHandler(app)
 		stsCtl := operator.Build(stsLwa, stsH, watchLabel)
 
 		swarmLwa := crd.NewListWatcherAdapter(swarmCl, namespace)
