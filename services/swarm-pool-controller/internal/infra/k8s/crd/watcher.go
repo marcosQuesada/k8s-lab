@@ -3,8 +3,8 @@ package crd
 import (
 	"context"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
-	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/apis/swarm/v1alpha1"
-	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/generated/clientset/versioned"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"

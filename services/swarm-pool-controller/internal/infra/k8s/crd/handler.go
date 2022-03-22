@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
-	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/apis/swarm/v1alpha1"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	"strings"

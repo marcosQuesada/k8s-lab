@@ -20,3 +20,10 @@ docker build -t config-reloader-controller . --build-arg SERVICE=config-reloader
 
 ```
 
+## Development notes
+
+Generate CRD api:
+```
+vendor/k8s.io/code-generator/generate-groups.sh all github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd/generated github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd/apis "configmappodsrefresher:v1alpha1" --go-header-file ./hack/boilerplate.go.txt --output-base "$(dirname "${BASH_SOURCE[0]}")/" -v 3 
+
+```
