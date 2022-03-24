@@ -27,3 +27,14 @@ Generate CRD api:
 vendor/k8s.io/code-generator/generate-groups.sh all github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd/generated github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd/apis "configmappodsrefresher:v1alpha1" --go-header-file ./hack/boilerplate.go.txt --output-base "$(dirname "${BASH_SOURCE[0]}")/" -v 3 
 
 ```
+
+## Flow notes
+- On Controler boot list and watch configReload CRDs
+    - populates desired subjects, namespace/configmap to deployment/statefulset
+- Controller watches configmaps from all namespaces
+  - on configmap update looks for populated matches
+  - if it founds any it will redeploy deployment/statefulset
+
+### Corner case
+- What to do on Deleted configMap 
+  - It can mark CRD as broken state (Example)
