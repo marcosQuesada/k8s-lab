@@ -19,15 +19,15 @@ type EventProcessor interface {
 	Handle(ctx context.Context, ev Event) error
 }
 
-type controller struct {
+type consumer struct {
 	processor             EventProcessor
 	queue                 workqueue.RateLimitingInterface
 	conciliationFrequency time.Duration
 }
 
-// NewController instantiates controller
-func NewController(ep EventProcessor, q workqueue.RateLimitingInterface) *controller {
-	return &controller{
+// NewConsumer instantiates consumer
+func NewConsumer(ep EventProcessor, q workqueue.RateLimitingInterface) *consumer {
+	return &consumer{
 		processor:             ep,
 		queue:                 q,
 		conciliationFrequency: defaultConciliationFrequency,
@@ -35,7 +35,7 @@ func NewController(ep EventProcessor, q workqueue.RateLimitingInterface) *contro
 }
 
 // Run begins watching and syncing.
-func (c *controller) Run(stopCh chan struct{}) {
+func (c *consumer) Run(stopCh chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
@@ -47,12 +47,12 @@ func (c *controller) Run(stopCh chan struct{}) {
 }
 
 // runWorker executes the loop to process new items added to the queue
-func (c *controller) runWorker() {
+func (c *consumer) runWorker() {
 	for c.processNextItem() {
 	}
 }
 
-func (c *controller) processNextItem() bool {
+func (c *consumer) processNextItem() bool {
 	ev, quit := c.queue.Get()
 	if quit {
 		return false
@@ -77,7 +77,7 @@ func (c *controller) processNextItem() bool {
 	return true
 }
 
-func (c *controller) handleError(key interface{}, err error) {
+func (c *consumer) handleError(key interface{}, err error) {
 	if c.queue.NumRequeues(key) < maxRequeue {
 		log.Errorf("Error syncing pod %v: %v", key, err)
 		c.queue.AddRateLimited(key)
@@ -90,7 +90,7 @@ func (c *controller) handleError(key interface{}, err error) {
 
 }
 
-// Controller defines resource controller runner
+// Controller defines resource consumer runner
 type Controller interface {
 	Run(chan struct{})
 }
@@ -104,6 +104,6 @@ func Build(lw ListWatcher, rh ResourceHandler, watchLabel ...string) Controller 
 	}
 
 	p := NewEventProcessor(lw, eventHandler, rh)
-	return NewController(p, eventQueue)
+	return NewConsumer(p, eventQueue)
 
 }

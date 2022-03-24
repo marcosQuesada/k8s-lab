@@ -14,7 +14,7 @@ import (
 func TestController_ManualRunProcessIngestedEventWithSuccess(t *testing.T) {
 	feh := &fakeEventProcessor{}
 	q := newFakeQueue()
-	c := &controller{
+	c := &consumer{
 		processor: feh,
 		queue:     q,
 	}
@@ -39,7 +39,7 @@ func TestController_ManualRunProcessIngestedEventWithSuccess(t *testing.T) {
 func TestController_ManualRunProcessIngestedEventWithErrorRetriesAgain(t *testing.T) {
 	feh := &fakeEventProcessor{err: errors.New("foo error")}
 	q := newFakeQueue()
-	c := &controller{
+	c := &consumer{
 		processor: feh,
 		queue:     q,
 	}
@@ -62,7 +62,7 @@ func TestController_ManualRunProcessIngestedEventWithErrorRetriesAgain(t *testin
 func TestController_ManualRunProcessIngestedEventWithErrorRetriesAgainUntilMaxRetriesAndDiscardPacket(t *testing.T) {
 	feh := &fakeEventProcessor{err: errors.New("foo error")}
 	q := newFakeQueue()
-	c := &controller{
+	c := &consumer{
 		processor: feh,
 		queue:     q,
 	}
@@ -96,7 +96,7 @@ func TestController_ManualRunProcessIngestedEventWithErrorRetriesAgainUntilMaxRe
 func TestController_RunProcessIngestedEventFromConciliationLoop(t *testing.T) {
 	feh := &fakeEventProcessor{wg: &sync.WaitGroup{}}
 	q := newFakeQueue()
-	c := &controller{
+	c := &consumer{
 		processor:             feh,
 		queue:                 q,
 		conciliationFrequency: time.Millisecond * 50,
