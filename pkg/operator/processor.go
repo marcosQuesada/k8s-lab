@@ -39,7 +39,7 @@ type eventProcessor struct {
 }
 
 // NewEventProcessor instantiates EventProcessor
-func NewEventProcessor(w ListWatcher, eh EventHandler, h ResourceHandler) *eventProcessor {
+func NewEventProcessor(w ListWatcher, eh EventHandler, h ResourceHandler) *eventProcessor { // @TODO: HERE!
 	indexer, informer := cache.NewIndexerInformer(
 		&cache.ListWatch{
 			ListFunc:  w.List,
@@ -58,6 +58,19 @@ func NewEventProcessor(w ListWatcher, eh EventHandler, h ResourceHandler) *event
 	return &eventProcessor{
 		indexer:  indexer,
 		informer: informer,
+		handler:  h,
+	}
+}
+
+type informer interface {
+	cache.Controller
+	GetIndexer() cache.Indexer
+}
+
+func NewEventProcessorWithCustomInformer(i informer, h ResourceHandler) *eventProcessor {
+	return &eventProcessor{
+		indexer:  i.GetIndexer(),
+		informer: i,
 		handler:  h,
 	}
 }

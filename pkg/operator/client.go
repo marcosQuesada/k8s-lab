@@ -2,6 +2,7 @@ package operator
 
 import (
 	log "github.com/sirupsen/logrus"
+	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -38,4 +39,15 @@ func BuildExternalClient() kubernetes.Interface {
 	}
 
 	return client
+}
+
+func BuildAPIExternalClient() apiextensionsclientset.Interface {
+	kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+	if err != nil {
+		log.Fatalf("unable to get cluster config from flags, error %v", err)
+	}
+
+	return apiextensionsclientset.NewForConfigOrDie(config)
 }
