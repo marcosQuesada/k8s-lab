@@ -1,11 +1,18 @@
 package v1alpha1
 
 import (
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/crd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+const (
+	CrdKind   string = "ConfigMapPodRefresher"
+	Version   string = "v1alpha1"
+	Singular  string = "configmappodrefresher"
+	Plural    string = "configmappodrefreshers"
+	ShortName string = "cmpr"
+	Name      string = Plural + "." + crd.GroupName
+)
 
 const (
 	Deployment  = "Deployment"

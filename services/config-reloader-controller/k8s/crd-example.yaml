@@ -1,0 +1,11 @@
+apiVersion: "k8slab.info/v1alpha1"
+kind: "ConfigMapPodRefresher"
+metadata:
+  name: refresher-example-1
+  namespace: default
+spec:
+  version: 1
+  namespace: default
+  watched-config-map: foo-1
+  pool-type: StatefulSet
+  pool-subject-name: fake-statefulset

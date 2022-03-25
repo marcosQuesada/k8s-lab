@@ -1,0 +1,62 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: configmappodrefreshers.k8slab.info
+spec:
+  group: k8slab.info
+  scope: Namespaced
+  names:
+    plural: configmappodrefreshers
+    singular: configmappodrefresher
+    kind: ConfigMapPodRefresher
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: { }
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            spec:
+              type: object
+              required:
+                - namespace
+                - watched-config-map
+                - pool-type
+                - pool-subject-name
+              properties:
+                version:
+                  type: integer
+                namespace:
+                  type: string
+                watched-config-map:
+                  type: string
+                pool-type:
+                  type: string
+                pool-subject-name:
+                  type: string
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+      additionalPrinterColumns:
+        - name: Version
+          type: integer
+          jsonPath: .spec.version
+        - name: Namespace
+          type: string
+          jsonPath: .spec.namespace
+        - name: WatchedConfigMap
+          type: string
+          jsonPath: .spec.watched-config-map
+        - name: PoolType
+          type: string
+          jsonPath: .spec.pool-type
+        - name: PoolSubjectName
+          type: string
+          jsonPath: .spec.pool-subject-name

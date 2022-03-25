@@ -5,9 +5,12 @@ import (
 	"github.com/gorilla/mux"
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
-	cm "github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
-	"github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/configmap"
+	"github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s"
+	"github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd"
+	crdinformers "github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd/generated/informers/externalversions"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,13 +26,22 @@ var externalCmd = &cobra.Command{
 	Short: "config reloader external controller, useful on development path",
 	Long:  `config reloader controller restarts deployment/statefulset on watched configmap change`,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Infof("config reloader controller external listening on namespace %s label %s Version %s release date %s http server on port %s", namespace, watchLabel, cfg.Commit, cfg.Date, cfg.HttpPort)
+		log.Infof("%s external running release %s date %s http server on port %s", appID, cfg.Commit, cfg.Date, cfg.HttpPort)
 
-		cl := operator.BuildExternalClient()
+		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		crdClient := k8s.BuildConfigMapPodRefresherExternalClient()
+		informerFactory := crdinformers.NewSharedInformerFactory(crdClient, 0) // @TODO: time.Minute*1)
+		eh := operator.NewResourceEventHandler(q)
+		informer := informerFactory.K8slab().V1alpha1().ConfigMapPodRefreshers()
+		informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    eh.Add,
+			UpdateFunc: eh.Update,
+			DeleteFunc: eh.Delete,
+		})
 
-		lwa := cm.NewListWatcherAdapter(cl, namespace)
-		h := configmap.NewHandler()
-		ctl := operator.Build(lwa, h) // @TODO: watchedConfigMapName
+		h := crd.NewHandler()
+		p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
+		ctl := operator.NewConsumer(p, q)
 
 		stopCh := make(chan struct{})
 		go ctl.Run(stopCh)
@@ -57,6 +69,9 @@ var externalCmd = &cobra.Command{
 			log.Errorf("unexpected error on http server close %v", err)
 		}
 		close(stopCh)
+		_ = srv.Close()
+		q.ShutDown()
+
 		log.Info("Stopping controller")
 	},
 }
