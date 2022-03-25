@@ -9,7 +9,7 @@ import (
 
 // Pool models an ordered set of workers
 type Pool interface {
-	UpdateExpectedSize(size int)
+	UpdateSize(size int)
 }
 
 // Handler handles statefulset state updates
@@ -27,7 +27,7 @@ func NewHandler(st Pool) *Handler {
 // Created handles statefulset creation event
 func (h *Handler) Created(ctx context.Context, obj runtime.Object) {
 	ss := obj.(*api.StatefulSet)
-	h.state.UpdateExpectedSize(int(*ss.Spec.Replicas))
+	h.state.UpdateSize(int(*ss.Spec.Replicas))
 
 	log.Debugf("Created StatefulSet %s replicas %d", ss.Name, uint64(*ss.Spec.Replicas))
 }
@@ -35,13 +35,13 @@ func (h *Handler) Created(ctx context.Context, obj runtime.Object) {
 // Updated handles statefulset updates event
 func (h *Handler) Updated(ctx context.Context, new, old runtime.Object) {
 	ss := new.(*api.StatefulSet)
-	h.state.UpdateExpectedSize(int(*ss.Spec.Replicas))
+	h.state.UpdateSize(int(*ss.Spec.Replicas))
 }
 
 // Deleted handles statefulset deletion event
 func (h *Handler) Deleted(ctx context.Context, obj runtime.Object) {
 	ss := obj.(*api.StatefulSet)
-	h.state.UpdateExpectedSize(0)
+	h.state.UpdateSize(0)
 
 	log.Debugf("Deleted StatefulSet %s", ss.Name)
 }

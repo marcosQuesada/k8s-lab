@@ -90,13 +90,10 @@ func TestNewProvider_ItCratesSwarm(t *testing.T) {
 			Namespace: namespace,
 		},
 		Spec: v1alpha1.SwarmSpec{
-			Version:      1,
-			ExpectedSize: 3,
-			Size:         2,
-			Members: []v1alpha1.Member{{
-				TypeMeta:   metav1.TypeMeta{},
-				ObjectMeta: metav1.ObjectMeta{},
-				Name:       "foobar_0",
+			Version: 1,
+			Size:    2,
+			Members: []v1alpha1.Worker{{
+				Name: "foobar_0",
 				Jobs: []v1alpha1.Job{
 					"stream:xxctv12:updated",
 					"stream:xxctv13:updated",
@@ -112,7 +109,7 @@ func TestNewProvider_ItCratesSwarm(t *testing.T) {
 					"stream:sportnews0:updated",
 					"stream:cars:new",
 				},
-				State:     v1alpha1.MemberStatus{},
+				State:     v1alpha1.Status{Phase: "FAKED"},
 				CreatedAt: time.Now().Unix(),
 			},
 			},

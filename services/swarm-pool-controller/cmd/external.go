@@ -13,7 +13,6 @@ import (
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
 	pod2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/pod"
 	statefulset2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
-	ht "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/transport/http"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net/http"
@@ -34,13 +33,12 @@ var externalCmd = &cobra.Command{
 		cl := operator.BuildExternalClient()
 		swarmCl := k8s.BuildSwarmExternalClient()
 		cm := configmap.NewProvider(cl, namespace, workersConfigMapName, watchLabel)
-		vst := ht.NewVersionProvider(cfg.HttpPort) // @TODO: REFACTOR AND REMOVE, Move version to config
 		podp := pod.NewProvider(cl, namespace)
 
 		swl := crd.NewProvider(swarmCl, namespace, watchLabel)
 		mex := crd.NewProviderMiddleware(cm, swl)
 
-		ex := app.NewExecutor(mex, vst, podp)
+		ex := app.NewExecutor(mex, podp)
 		st := app.NewState(config.Jobs, watchLabel)
 		app := app.NewWorkerPool(st, ex)
 

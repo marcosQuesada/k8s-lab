@@ -62,7 +62,7 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 			return fmt.Errorf("unable to get swarm map %v", err)
 		}
 
-		sw, err = p.initializeCRD(ctx)
+		sw, err = p.initializeCRD(ctx) // @TODO: REFACTOR
 		if err != nil {
 			return fmt.Errorf("unable to initialize CRD, error %v", err)
 		}
@@ -70,12 +70,12 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 
 	sw.Spec.Version = a.Version
 	sw.Spec.Size = len(a.Workloads)
-	sw.Spec.Members = []v1alpha1.Member{}
+	sw.Spec.Members = []v1alpha1.Worker{}
 	for n, s := range a.Workloads {
-		sw.Spec.Members = append(sw.Spec.Members, v1alpha1.Member{
+		sw.Spec.Members = append(sw.Spec.Members, v1alpha1.Worker{
 			Name:      n,
 			Jobs:      p.adaptJobsToAlpha(s.Jobs),
-			State:     v1alpha1.MemberStatus{Phase: v1alpha1.PhaseRunning},
+			State:     v1alpha1.Status{Phase: v1alpha1.PhaseRunning},
 			CreatedAt: time.Now().Unix(),
 		})
 	}
@@ -85,6 +85,12 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 	if err != nil {
 		return fmt.Errorf("unable to update config map %v", err)
 	}
+
+	//swr.Status.Phase = "RUNNING"
+	//_, err = p.client.K8slabV1alpha1().Swarms(p.namespace).UpdateStatus(ctx, swr, metav1.UpdateOptions{})
+	//if err != nil {
+	//	return fmt.Errorf("unable to update config map %v", err)
+	//}
 
 	return nil
 }
@@ -103,6 +109,7 @@ func (p *Provider) Get(ctx context.Context) (*cfg.Workloads, error) {
 	return w, nil
 }
 
+// @TODO: Refactor!
 func (p *Provider) initializeCRD(ctx context.Context) (*v1alpha1.Swarm, error) {
 	sw := &v1alpha1.Swarm{
 		TypeMeta: metav1.TypeMeta{

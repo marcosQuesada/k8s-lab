@@ -24,27 +24,26 @@ spec:
             spec:
               type: object
               required:
-                - expected-size
+                - workload
               properties:
                 version:
                   type: integer
-                expected-size:
-                  type: integer
-                  minimum: 0
                 size:
                   type: integer
+                workload:
+                  type: array
+                  items:
+                    type: string
                 members:
                   type: array
                   items:
                     type: object
                     required:
+                      - name
+                      - jobs
                       - created_at
                     properties:
-                      index:
-                        type: integer
                       name:
-                        type: string
-                      address:
                         type: string
                       created_at:
                         type: integer
@@ -66,10 +65,6 @@ spec:
         - name: Version
           type: integer
           jsonPath: .spec.version
-        - name: ExpectedSize
-          type: integer
-          description: The number of desired members in swarm
-          jsonPath: .spec.expected-size
         - name: Size
           type: integer
           jsonPath: .spec.size

@@ -51,8 +51,8 @@ func NewWorkerPool(cmp assigner, not delegated) *pool {
 	return s
 }
 
-// UpdateExpectedSize sets pool expected size
-func (p *pool) UpdateExpectedSize(newSize int) {
+// UpdateSize sets pool expected size
+func (p *pool) UpdateSize(newSize int) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 

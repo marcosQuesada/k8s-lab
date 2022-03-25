@@ -1,11 +1,18 @@
 package v1alpha1
 
 import (
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/crd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+const (
+	CrdKind   string = "Swarm"
+	Version   string = "v1alpha1"
+	Singular  string = "swarm"
+	Plural    string = "swarms"
+	ShortName string = "swm"
+	Name      string = Plural + "." + crd.GroupName
+)
 
 const (
 	PhasePending = "PENDING"
@@ -15,39 +22,24 @@ const (
 
 type Job string
 
-// MemberStatus defines the observed state of Member
-type MemberStatus struct {
-	// Phase represents the state of the schedule: until the command is executed
-	// it is PENDING, afterwards it is DONE.
+// Status defines the observed state of Worker
+type Status struct {
 	Phase string `json:"phase,omitempty"`
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type Member struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Name      string       `json:"name"`
-	Jobs      []Job        `json:"jobs"`
-	State     MemberStatus `json:"state"`
-	CreatedAt int64        `json:"created_at"`
+type Worker struct {
+	Name      string `json:"name"`
+	Jobs      []Job  `json:"jobs"`
+	CreatedAt int64  `json:"created_at"`
+	State     Status `json:"state"`
 }
 
 // SwarmSpec defines the desired state of Swarm
 type SwarmSpec struct {
-	Version      int64    `json:"version"`
-	ExpectedSize int      `json:"expected-size"` // @TODO: As SubResource
-	Size         int      `json:"size"`
-	Members      []Member `json:"members,omitempty"`
-}
-
-// SwarmStatus defines the observed state of Swarm
-type SwarmStatus struct {
-	// Phase represents the state of the schedule: until the command is executed
-	// it is PENDING, afterwards it is DONE.
-	Phase string `json:"phase,omitempty"`
-	// Important: Run "make" to regenerate code after modifying this file
+	Version  int64    `json:"version"`
+	Size     int      `json:"size"`
+	Workload []Job    `json:"workload"`
+	Members  []Worker `json:"members,omitempty"`
 }
 
 // +genclient
@@ -58,8 +50,8 @@ type Swarm struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SwarmSpec   `json:"spec,omitempty"`
-	Status SwarmStatus `json:"status,omitempty"`
+	Spec   SwarmSpec `json:"spec,omitempty"`
+	Status Status    `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -61,7 +61,7 @@ func TestOnUpdateExpectedSizeDetectsVariationAndTriesToAssignKeys(t *testing.T) 
 	app := NewWorkerPool(asg, call)
 	defer app.Terminate()
 
-	app.UpdateExpectedSize(1)
+	app.UpdateSize(1)
 	if !app.AddWorkerIfNotExists(0, "fakeSlave", net.ParseIP("127.0.0.1")) {
 		t.Fatal("worker addition assertion expected true")
 	}
@@ -77,11 +77,11 @@ func TestPool_ItMarksWorkersToNotifyOnScaleUp(t *testing.T) {
 	app := NewWorkerPool(asg, call)
 	defer app.Terminate()
 
-	app.UpdateExpectedSize(1)
+	app.UpdateSize(1)
 	if !app.AddWorkerIfNotExists(0, "fakeSlave-0", net.ParseIP("127.0.0.1")) {
 		t.Fatal("worker addition assertion expected true")
 	}
-	app.UpdateExpectedSize(2)
+	app.UpdateSize(2)
 	if !app.AddWorkerIfNotExists(1, "fakeSlave-1", net.ParseIP("127.0.0.2")) {
 		t.Fatal("worker addition assertion expected true")
 	}
@@ -112,7 +112,7 @@ func TestPool_ItMarksWorkersToNotifyOnScaleDown(t *testing.T) {
 	app := NewWorkerPool(asg, call)
 	defer app.Terminate()
 
-	app.UpdateExpectedSize(2)
+	app.UpdateSize(2)
 	if !app.AddWorkerIfNotExists(0, "fakeSlave-0", net.ParseIP("127.0.0.1")) {
 		t.Fatal("worker addition assertion expected true")
 	}
@@ -120,7 +120,7 @@ func TestPool_ItMarksWorkersToNotifyOnScaleDown(t *testing.T) {
 		t.Fatal("worker addition assertion expected true")
 	}
 
-	app.UpdateExpectedSize(1)
+	app.UpdateSize(1)
 	app.RemoveWorkerByName("fakeSlave-1")
 
 	if atLeast, got := int32(2), atomic.LoadInt32(&call.assigns); got < atLeast {

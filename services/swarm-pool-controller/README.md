@@ -109,5 +109,5 @@ kubectl rollout restart statefulset/swarm-worker
 
 ### CRD API generation
 ```
-vendor/k8s.io/code-generator/generate-groups.sh all github.com/marcosQuesada/k8s-swarm/services/controller/internal/infra/k8s/generated github.com/marcosQuesada/k8s-swarm/services/controller/internal/infra/k8s/apis "swarm:v1alpha1" --go-header-file ./hack/boilerplate.go.txt --output-base "$(dirname "${BASH_SOURCE[0]}")/" -v 3 
+vendor/k8s.io/code-generator/generate-groups.sh all github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis "swarm:v1alpha1" --go-header-file ./hack/boilerplate.go.txt --output-base "$(dirname "${BASH_SOURCE[0]}")/" -v 10 
 ```

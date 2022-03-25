@@ -9,7 +9,7 @@ import (
 	"os"
 )
 
-const appID = "k8s-swarm-swarm-pool-controller"
+const appID = "swarm-pool-controller"
 
 var (
 	config               *cfg.Workload
@@ -35,7 +35,7 @@ func Execute() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	if err := cfg.BuildLogger(appID); err != nil {
-		log.Fatalf("unable to unMarshall config, error %v", err)
+		log.Fatalf("unable to build logger, error %v", err)
 	}
 
 	viper.AddConfigPath(cfg.ConfigFilePath)
