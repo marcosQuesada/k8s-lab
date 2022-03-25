@@ -7,3 +7,6 @@ From project root:
 ```
 docker build -t fake-worker . --build-arg SERVICE=fake-worker --build-arg COMMIT=$(git rev-list -1 HEAD) --build-arg DATE=$(date +%m-%d-%Y)
 ```
+
+## TODO
+- use Workload Equals/Diffs

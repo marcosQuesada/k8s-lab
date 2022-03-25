@@ -9,21 +9,19 @@ import (
 
 // Provider deletes pod to force pod fresh recreation
 type Provider struct {
-	client    kubernetes.Interface
-	namespace string
+	client kubernetes.Interface
 }
 
 // NewProvider instantiates pod refresher provider
-func NewProvider(cl kubernetes.Interface, namespace string) *Provider {
+func NewProvider(cl kubernetes.Interface) *Provider {
 	return &Provider{
-		client:    cl,
-		namespace: namespace,
+		client: cl,
 	}
 }
 
 // RefreshPod deletes pod
-func (p *Provider) Refresh(ctx context.Context, name string) error {
-	err := p.client.CoreV1().Pods(p.namespace).Delete(ctx, name, metav1.DeleteOptions{})
+func (p *Provider) Refresh(ctx context.Context, namespace, name string) error {
+	err := p.client.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to delete pod %s error %v", name, err)
 	}

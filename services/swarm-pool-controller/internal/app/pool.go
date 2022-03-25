@@ -15,18 +15,27 @@ import (
 const defaultSleepBeforeNotify = time.Second * 2
 const defaultTimeout = time.Second * 1
 
+type Pool interface {
+	UpdateSize(newSize int)
+	AddWorkerIfNotExists(idx int, name string, IP net.IP) bool
+	RemoveWorkerByName(name string)
+	Terminate()
+}
+
 type assigner interface {
 	BalanceWorkload(totalWorkers int, version int64) error
 	Workloads() *config.Workloads
 }
 
+// @TODO: Refactor and remove
 type delegated interface {
 	Assign(ctx context.Context, w *config.Workloads) error
-	RestartWorker(ctx context.Context, name string) error
+	RestartWorker(ctx context.Context, namespace, name string) error
 }
 
 type pool struct {
 	index          map[string]*worker
+	namespace      string
 	state          assigner
 	delegated      delegated
 	version        int64
@@ -37,9 +46,10 @@ type pool struct {
 }
 
 // NewWorkerPool instantiates workers pool
-func NewWorkerPool(cmp assigner, not delegated) *pool {
+func NewWorkerPool(cmp assigner, not delegated, namespace string) Pool {
 	s := &pool{
 		index:          make(map[string]*worker),
+		namespace:      namespace,
 		state:          cmp,
 		delegated:      not,
 		underVariation: true,
@@ -161,7 +171,7 @@ func (p *pool) requestRestart(ctx context.Context, w *worker) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
-	if err := w.delegated.RestartWorker(ctx, w.name); err != nil {
+	if err := w.delegated.RestartWorker(ctx, p.namespace, w.name); err != nil {
 		log.Errorf("unable to restart worker, error %v", err)
 		return err
 	}

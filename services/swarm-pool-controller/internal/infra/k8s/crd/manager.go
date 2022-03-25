@@ -40,8 +40,11 @@ func (m *manager) Create(ctx context.Context) error {
 								"spec": {
 									Type: "object",
 									Properties: map[string]v1.JSONSchemaProps{
-										"version": {Type: "integer"},
-										"size":    {Type: "integer"},
+										"namespace":          {Type: "string"},
+										"watched-label":      {Type: "string"},
+										"config-map-subject": {Type: "string"},
+										"version":            {Type: "integer"},
+										"size":               {Type: "integer"},
 										"workload": {
 											Type: "array",
 											Items: &v1.JSONSchemaPropsOrArray{
@@ -80,7 +83,7 @@ func (m *manager) Create(ctx context.Context) error {
 											Required: []string{"created_at"},
 										},
 									},
-									Required: []string{"workload"},
+									Required: []string{"namespace", "watched-label", "workload"},
 								},
 								"status": {
 									Type: "object",
@@ -94,6 +97,16 @@ func (m *manager) Create(ctx context.Context) error {
 						},
 					},
 					AdditionalPrinterColumns: []v1.CustomResourceColumnDefinition{
+						{
+							Name:     "Namespace",
+							Type:     "string",
+							JSONPath: ".spec.namespace",
+						},
+						{
+							Name:     "WatchedLabel",
+							Type:     "string",
+							JSONPath: ".spec.watched-label",
+						},
 						{
 							Name:     "Version",
 							Type:     "integer",

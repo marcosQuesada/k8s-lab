@@ -24,8 +24,16 @@ spec:
             spec:
               type: object
               required:
+                - namespace
+                - watched-label
                 - workload
               properties:
+                namespace:
+                  type: string
+                watched-label:
+                  type: string
+                config-map-subject:
+                  type: string
                 version:
                   type: integer
                 size:
@@ -62,6 +70,15 @@ spec:
                 phase:
                   type: string
       additionalPrinterColumns:
+        - name: Namespace
+          type: string
+          jsonPath: .spec.namespace
+        - name: WatchedLabel
+          type: string
+          jsonPath: .spec.watched-label
+        - name: ConfigMapSubject
+          type: string
+          jsonPath: .spec.config-map-subject
         - name: Version
           type: integer
           jsonPath: .spec.version

@@ -64,6 +64,7 @@ type Workloads struct {
 	Version   int64                `mapstructure:"version" json:"version"`
 }
 
+// @TODO: USE THEM FROM WORKER SIDE!
 func (a *Workloads) Equals(asg *Workloads) bool {
 	if asg == nil {
 		return false

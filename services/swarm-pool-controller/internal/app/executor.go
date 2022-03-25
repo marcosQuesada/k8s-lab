@@ -7,7 +7,7 @@ import (
 )
 
 type workerManager interface {
-	Refresh(ctx context.Context, podName string) error
+	Refresh(ctx context.Context, namespace, podName string) error
 }
 
 type delegatedStorage interface {
@@ -31,7 +31,7 @@ func (e *executor) Assign(ctx context.Context, w *ap.Workloads) (err error) {
 	return e.storage.Set(ctx, w)
 }
 
-func (e *executor) RestartWorker(ctx context.Context, name string) error {
+func (e *executor) RestartWorker(ctx context.Context, namespace, name string) error {
 	log.Infof("Restarting worker %s", name)
-	return e.manager.Refresh(ctx, name)
+	return e.manager.Refresh(ctx, namespace, name)
 }

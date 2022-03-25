@@ -7,14 +7,14 @@ import (
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator/statefulset"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
-	pod2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/pod"
-	statefulset2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
+	crdinformers "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/informers/externalversions"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"net/http"
 	"os"
 	"os/signal"
@@ -33,30 +33,28 @@ var externalCmd = &cobra.Command{
 		cl := operator.BuildExternalClient()
 		swarmCl := k8s.BuildSwarmExternalClient()
 		cm := configmap.NewProvider(cl, namespace, workersConfigMapName, watchLabel)
-		podp := pod.NewProvider(cl, namespace)
-
+		podp := pod.NewProvider(cl)
 		swl := crd.NewProvider(swarmCl, namespace, watchLabel)
 		mex := crd.NewProviderMiddleware(cm, swl)
-
 		ex := app.NewExecutor(mex, podp)
-		st := app.NewState(config.Jobs, watchLabel)
-		app := app.NewWorkerPool(st, ex)
 
-		podLwa := pod.NewListWatcherAdapter(cl, namespace)
-		podH := pod2.NewHandler(app)
-		podCtl := operator.Build(podLwa, podH, watchLabel)
+		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		informerFactory := crdinformers.NewSharedInformerFactory(swarmCl, 0)
+		eh := operator.NewResourceEventHandler(q)
+		informer := informerFactory.K8slab().V1alpha1().Swarms()
+		informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    eh.Add,
+			UpdateFunc: eh.Update,
+			DeleteFunc: eh.Delete,
+		})
 
-		stsLwa := statefulset.NewListWatcherAdapter(cl, namespace)
-		stsH := statefulset2.NewHandler(app)
-		stsCtl := operator.Build(stsLwa, stsH, watchLabel)
-
-		swarmLwa := crd.NewListWatcherAdapter(swarmCl, namespace)
-		swarmH := crd.NewHandler()
-		swarmCtl := operator.Build(swarmLwa, swarmH)
+		wpf := k8s.NewWorkerPoolFactory(cl, ex)
+		m := app.NewManager(wpf)
+		h := crd.NewHandler(m)
+		p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
+		swarmCtl := operator.NewConsumer(p, q)
 
 		stopCh := make(chan struct{})
-		go podCtl.Run(stopCh)
-		go stsCtl.Run(stopCh)
 		go swarmCtl.Run(stopCh)
 
 		router := mux.NewRouter()
@@ -82,6 +80,9 @@ var externalCmd = &cobra.Command{
 			log.Errorf("unexpected error on http server close %v", err)
 		}
 		close(stopCh)
+		_ = srv.Close()
+		wpf.Shutdown()
+		q.ShutDown()
 		log.Info("Stopping controller")
 	},
 }

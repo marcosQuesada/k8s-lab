@@ -1,9 +1,12 @@
-apiVersion: "k8slab.info/v1alpha1"
-kind: "Swarm"
+apiVersion: k8slab.info/v1alpha1
+kind: Swarm
 metadata:
-  name: "worker-config"
-  namespace: "swarm"
+  name: swarm-worker
+  namespace: swarm
 spec:
+  namespace: swarm
+  watched-label: swarm-worker
+  config-map-subject: swarm-worker-config
   version: 1
   workload:
     - stream:xxrtve1

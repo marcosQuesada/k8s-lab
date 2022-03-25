@@ -7,15 +7,15 @@ import (
 	ht "github.com/marcosQuesada/k8s-lab/pkg/http/handler"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
-	pod2 "github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator/statefulset"
-	app2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
-	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/pod"
-	statefulset2 "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
+	crdinformers "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/informers/externalversions"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"net/http"
 	"os"
 	"os/signal"
@@ -34,25 +34,29 @@ var internalCmd = &cobra.Command{
 		cl := operator.BuildInternalClient()
 		swarmCl := k8s.BuildSwarmInternalClient()
 		cm := configmap.NewProvider(cl, namespace, workersConfigMapName, watchLabel)
-		pdl := pod2.NewProvider(cl, namespace)
+		podp := pod.NewProvider(cl)
 		swl := crd.NewProvider(swarmCl, namespace, watchLabel)
 		mex := crd.NewProviderMiddleware(cm, swl)
+		ex := app.NewExecutor(mex, podp)
 
-		ex := app2.NewExecutor(mex, pdl)
-		st := app2.NewState(config.Jobs, watchLabel)
-		app := app2.NewWorkerPool(st, ex)
+		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		informerFactory := crdinformers.NewSharedInformerFactory(swarmCl, 0)
+		eh := operator.NewResourceEventHandler(q)
+		informer := informerFactory.K8slab().V1alpha1().Swarms()
+		informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    eh.Add,
+			UpdateFunc: eh.Update,
+			DeleteFunc: eh.Delete,
+		})
 
-		podLwa := pod2.NewListWatcherAdapter(cl, namespace)
-		podH := pod.NewHandler(app)
-		podCtl := operator.Build(podLwa, podH)
-
-		stsLwa := statefulset.NewListWatcherAdapter(cl, namespace)
-		stsH := statefulset2.NewHandler(app)
-		stsCtl := operator.Build(stsLwa, stsH)
+		wpf := k8s.NewWorkerPoolFactory(cl, ex)
+		m := app.NewManager(wpf)
+		h := crd.NewHandler(m)
+		p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
+		swarmCtl := operator.NewConsumer(p, q)
 
 		stopCh := make(chan struct{})
-		go podCtl.Run(stopCh)
-		go stsCtl.Run(stopCh)
+		go swarmCtl.Run(stopCh)
 
 		router := mux.NewRouter()
 		ch := ht.NewChecker(config2.Commit, config2.Date)

@@ -36,10 +36,12 @@ type Worker struct {
 
 // SwarmSpec defines the desired state of Swarm
 type SwarmSpec struct {
-	Version  int64    `json:"version"`
-	Size     int      `json:"size"`
-	Workload []Job    `json:"workload"`
-	Members  []Worker `json:"members,omitempty"`
+	Namespace    string   `json:"namespace"`
+	WatchedLabel string   `json:"watched-label"`
+	Version      int64    `json:"version"`
+	Workload     []Job    `json:"workload"`
+	Size         int      `json:"size"`
+	Members      []Worker `json:"members,omitempty"`
 }
 
 // +genclient

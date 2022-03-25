@@ -16,7 +16,7 @@ import (
 func TestOnGetAllWorkersReturnsAnOrderedListOfWorkers(t *testing.T) {
 	asg := &fakeAssigner{}
 	call := &fakeCaller{}
-	app := NewWorkerPool(asg, call)
+	app := NewWorkerPool(asg, call, "default")
 	// avoid any noise from conciliation loop
 	app.Terminate()
 
@@ -41,7 +41,8 @@ func TestOnGetAllWorkersReturnsAnOrderedListOfWorkers(t *testing.T) {
 		t.Fatalf("unable to add worker %s error %s", w2Name, w2IP.String())
 	}
 
-	wl := app.geAllWorkers()
+	a := app.(*pool)
+	wl := a.geAllWorkers()
 	if expected, got := 3, len(wl); expected != got {
 		t.Fatalf("unexpected worker size, expected %d got %d", expected, got)
 	}
@@ -58,7 +59,7 @@ func TestOnGetAllWorkersReturnsAnOrderedListOfWorkers(t *testing.T) {
 func TestOnUpdateExpectedSizeDetectsVariationAndTriesToAssignKeys(t *testing.T) {
 	asg := &fakeAssigner{}
 	call := &fakeCaller{}
-	app := NewWorkerPool(asg, call)
+	app := NewWorkerPool(asg, call, "default")
 	defer app.Terminate()
 
 	app.UpdateSize(1)
@@ -74,7 +75,7 @@ func TestOnUpdateExpectedSizeDetectsVariationAndTriesToAssignKeys(t *testing.T) 
 func TestPool_ItMarksWorkersToNotifyOnScaleUp(t *testing.T) {
 	asg := &fakeAssigner{}
 	call := &fakeCaller{err: errors.New("fake tiemout")}
-	app := NewWorkerPool(asg, call)
+	app := NewWorkerPool(asg, call, "default")
 	defer app.Terminate()
 
 	app.UpdateSize(1)
@@ -89,7 +90,8 @@ func TestPool_ItMarksWorkersToNotifyOnScaleUp(t *testing.T) {
 	if atLeast, got := int32(2), atomic.LoadInt32(&call.assigns); got < atLeast {
 		t.Errorf("min Workloads calls not match, at least %d got %d", atLeast, got)
 	}
-	w0, err := app.worker("fakeSlave-0")
+	a := app.(*pool)
+	w0, err := a.worker("fakeSlave-0")
 	if err != nil {
 		t.Fatalf("unable to get worker, error %v", err)
 	}
@@ -97,7 +99,7 @@ func TestPool_ItMarksWorkersToNotifyOnScaleUp(t *testing.T) {
 		t.Fatalf("expected state does not match, expected %s got %s", expected, got)
 	}
 
-	w1, err := app.worker("fakeSlave-1")
+	w1, err := a.worker("fakeSlave-1")
 	if err != nil {
 		t.Fatalf("unable to get worker, error %v", err)
 	}
@@ -109,7 +111,7 @@ func TestPool_ItMarksWorkersToNotifyOnScaleUp(t *testing.T) {
 func TestPool_ItMarksWorkersToNotifyOnScaleDown(t *testing.T) {
 	asg := &fakeAssigner{}
 	call := &fakeCaller{err: errors.New("fake tiemout")}
-	app := NewWorkerPool(asg, call)
+	app := NewWorkerPool(asg, call, "default")
 	defer app.Terminate()
 
 	app.UpdateSize(2)
@@ -126,7 +128,9 @@ func TestPool_ItMarksWorkersToNotifyOnScaleDown(t *testing.T) {
 	if atLeast, got := int32(2), atomic.LoadInt32(&call.assigns); got < atLeast {
 		t.Errorf("min Workloads calls not match, at least %d got %d", atLeast, got)
 	}
-	w0, err := app.worker("fakeSlave-0")
+
+	a := app.(*pool)
+	w0, err := a.worker("fakeSlave-0")
 	if err != nil {
 		t.Fatalf("unable to get worker, error %v", err)
 	}
@@ -178,6 +182,6 @@ func (f *fakeCaller) Assignation(ctx context.Context, w *worker) (*config.Worklo
 	return v, nil
 }
 
-func (f *fakeCaller) RestartWorker(ctx context.Context, name string) error {
+func (f *fakeCaller) RestartWorker(ctx context.Context, namespace, name string) error {
 	return nil
 }
