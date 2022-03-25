@@ -1,0 +1,10 @@
+apiVersion: "k8slab.info/v1alpha1"
+kind: ConfigMapClaimOwner
+metadata:
+  name: configmap-claimed-example-1
+  namespace: default
+spec:
+  namespace: default
+  config-map: foo-1
+  owner-type: StatefulSet
+  owner-name: fake-statefulset

@@ -1,14 +1,21 @@
 package v1alpha1
 
 import (
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/crd"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+const (
+	CrdKind   string = "ConfigMapClaimOwner"
+	Version   string = "v1alpha1"
+	Singular  string = "configmapownerclaim"
+	Plural    string = "configmapownerclaims"
+	ShortName string = "cmoc"
+	Name      string = Plural + "." + crd.GroupName
+)
 
 const (
-	Deployment  = "Deployment" // @TODO: Avoid duplication
+	Deployment  = "Deployment" // @TODO: Refactor, unify
 	StatefulSet = "StatefulSet"
 )
 
