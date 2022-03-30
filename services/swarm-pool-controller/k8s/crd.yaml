@@ -25,14 +25,15 @@ spec:
               type: object
               required:
                 - namespace
-                - watched-label
+                - statefulset-name
+                - configmap-name
                 - workload
               properties:
                 namespace:
                   type: string
-                watched-label:
+                statefulset-name:
                   type: string
-                config-map-subject:
+                configmap-name:
                   type: string
                 version:
                   type: integer
@@ -73,12 +74,12 @@ spec:
         - name: Namespace
           type: string
           jsonPath: .spec.namespace
-        - name: WatchedLabel
+        - name: StatefulSet
           type: string
-          jsonPath: .spec.watched-label
-        - name: ConfigMapSubject
+          jsonPath: .spec.statefulset-name
+        - name: ConfigMap
           type: string
-          jsonPath: .spec.config-map-subject
+          jsonPath: .spec.configmap-name
         - name: Version
           type: integer
           jsonPath: .spec.version

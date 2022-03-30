@@ -1,12 +1,12 @@
 apiVersion: k8slab.info/v1alpha1
 kind: Swarm
 metadata:
-  name: swarm-worker
+  name: swarm-config
   namespace: swarm
 spec:
   namespace: swarm
-  watched-label: swarm-worker
-  config-map-subject: swarm-worker-config
+  statefulset-name: swarm-worker
+  configmap-name: swarm-worker-config
   version: 1
   workload:
     - stream:xxrtve1

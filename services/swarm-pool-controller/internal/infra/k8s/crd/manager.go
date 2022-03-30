@@ -40,11 +40,11 @@ func (m *manager) Create(ctx context.Context) error {
 								"spec": {
 									Type: "object",
 									Properties: map[string]v1.JSONSchemaProps{
-										"namespace":          {Type: "string"},
-										"watched-label":      {Type: "string"},
-										"config-map-subject": {Type: "string"},
-										"version":            {Type: "integer"},
-										"size":               {Type: "integer"},
+										"namespace":        {Type: "string"},
+										"statefulset-name": {Type: "string"},
+										"config-map-name":  {Type: "string"},
+										"version":          {Type: "integer"},
+										"size":             {Type: "integer"},
 										"workload": {
 											Type: "array",
 											Items: &v1.JSONSchemaPropsOrArray{
@@ -83,7 +83,7 @@ func (m *manager) Create(ctx context.Context) error {
 											Required: []string{"created_at"},
 										},
 									},
-									Required: []string{"namespace", "watched-label", "workload"},
+									Required: []string{"namespace", "statefulset-name", "configmap-name", "workload"},
 								},
 								"status": {
 									Type: "object",
@@ -103,9 +103,14 @@ func (m *manager) Create(ctx context.Context) error {
 							JSONPath: ".spec.namespace",
 						},
 						{
-							Name:     "WatchedLabel",
+							Name:     "StatefulSet",
 							Type:     "string",
-							JSONPath: ".spec.watched-label",
+							JSONPath: ".spec.statefulset-name",
+						},
+						{
+							Name:     "ConfigMap",
+							Type:     "string",
+							JSONPath: ".spec.configmap-name",
 						},
 						{
 							Name:     "Version",
