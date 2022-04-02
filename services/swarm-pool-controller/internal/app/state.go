@@ -7,6 +7,14 @@ import (
 	"sync"
 )
 
+type State string
+
+const (
+	NeedsRefresh       State = "needs refresh"
+	WaitingAssignation State = "waiting config"
+	Syncing            State = "syncing"
+)
+
 type state struct {
 	setName string
 	jobs    []config.Job

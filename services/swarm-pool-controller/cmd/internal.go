@@ -51,7 +51,7 @@ var internalCmd = &cobra.Command{
 
 		wpf := k8s.NewWorkerPoolFactory(cl, ex)
 		m := app.NewManager(wpf)
-		h := crd.NewHandler(m)
+		h := crd.NewHandler(m, nil) //@TODO: BROKEN
 		p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
 		swarmCtl := operator.NewConsumer(p, q)
 

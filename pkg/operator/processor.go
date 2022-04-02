@@ -3,6 +3,7 @@ package operator
 import (
 	"context"
 	"errors"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -88,7 +89,7 @@ func (e *eventProcessor) Run(stopCh chan struct{}) {
 
 // Handle update event
 func (e *eventProcessor) Handle(ctx context.Context, ev Event) error {
-	_, exists, err := e.indexer.GetByKey(ev.GetKey())
+	obj, exists, err := e.indexer.GetByKey(ev.GetKey())
 	if err != nil {
 		log.Errorf("Fetching object with key %s from store failed with %v", ev.GetKey(), err)
 		return err
@@ -100,14 +101,18 @@ func (e *eventProcessor) Handle(ctx context.Context, ev Event) error {
 			e.handler.Deleted(ctx, ev.obj)
 		}
 		if ev, ok := ev.(*updateEvent); ok {
-			e.handler.Deleted(ctx, ev.oldObj)
+			e.handler.Deleted(ctx, ev.oldObj) // @TODO: FIX IT!
 		}
 		return nil
 	}
 
+	o, ok := obj.(runtime.Object)
+	if !ok {
+		return fmt.Errorf("unexpected type, expected runtime.Object got %T", obj)
+	}
 	switch ev := ev.(type) {
 	case *event:
-		e.handler.Created(ctx, ev.obj)
+		e.handler.Created(ctx, o)
 	case *updateEvent:
 		e.handler.Updated(ctx, ev.newObj, ev.oldObj)
 	}

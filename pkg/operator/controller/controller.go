@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -11,13 +12,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	"strings"
 	"time"
+	"unicode"
 )
 
 const maxRetries = 5
 
 type Handler interface {
-	Create(ctx context.Context, o runtime.Object) error
+	Set(ctx context.Context, o runtime.Object) error
 	Remove(ctx context.Context, namespace, name string) error
 }
 
@@ -28,7 +31,7 @@ type Controller struct {
 	resourceType string
 }
 
-func NewController(eventHandler Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
+func New(eventHandler Handler, informer cache.SharedIndexInformer, resourceType string) *Controller {
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
 	ctl := &Controller{
 		informer:     informer,
@@ -36,11 +39,17 @@ func NewController(eventHandler Handler, informer cache.SharedIndexInformer, res
 		eventHandler: eventHandler,
 		resourceType: resourceType,
 	}
+
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			ctl.enqueue(obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
+			diff := cmp.Diff(old, new)
+			cleanDiff := strings.TrimFunc(diff, func(r rune) bool {
+				return !unicode.IsGraphic(r)
+			})
+			fmt.Printf("UPDATE %s diff: %s \n", resourceType, cleanDiff)
 			ctl.enqueue(new)
 		},
 		DeleteFunc: func(obj interface{}) {
@@ -60,13 +69,15 @@ func NewController(eventHandler Handler, informer cache.SharedIndexInformer, res
 func (c *Controller) Run(ctx context.Context) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
-	go c.informer.Run(ctx.Done())
+	//go c.informer.Run(ctx.Done()) //@TODO informerFactory will take care of it
 
 	if !cache.WaitForNamedCacheSync(c.resourceType, ctx.Done(), c.informer.HasSynced) {
 		return
 	}
 
-	go wait.UntilWithContext(ctx, c.worker, time.Second)
+	log.Infof("%s First Cache Synced on version %s", c.resourceType, c.informer.LastSyncResourceVersion())
+
+	wait.UntilWithContext(ctx, c.worker, time.Second)
 }
 
 func (c *Controller) worker(ctx context.Context) {
@@ -77,11 +88,16 @@ func (c *Controller) worker(ctx context.Context) {
 func (c *Controller) processNextItem(ctx context.Context) bool {
 	k, quit := c.queue.Get()
 	if quit {
+		log.Error("Queue goes down!")
 		return false
 	}
 	defer c.queue.Done(k)
 
+	log.Infof("%s Cache Synced on version %s", c.resourceType, c.informer.LastSyncResourceVersion())
+
 	key := k.(string)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 	err := c.handle(ctx, key)
 	if err == nil || errors.HasStatusCause(err, v1.NamespaceTerminatingCause) {
 		c.queue.Forget(k)
@@ -121,7 +137,7 @@ func (c *Controller) handle(ctx context.Context, key string) error {
 		return fmt.Errorf("unexpected object type on handler, expected runtime object got %T", obj)
 	}
 
-	return c.eventHandler.Create(ctx, o)
+	return c.eventHandler.Set(ctx, o)
 }
 
 func (c *Controller) enqueue(obj interface{}) {
@@ -131,6 +147,6 @@ func (c *Controller) enqueue(obj interface{}) {
 		utilruntime.HandleError(err)
 		return
 	}
-	log.Infof("enqueue to %T: %s", obj, key)
+	log.Infof("enqueue %T: %s", obj, key)
 	c.queue.Add(key)
 }

@@ -1,20 +1,22 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"github.com/gorilla/mux"
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/controller"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
+	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	crdinformers "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/informers/externalversions"
+	statefulset "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,33 +31,70 @@ var externalCmd = &cobra.Command{
 	Long:  `swarm pool internal controller balance configured keys between swarm peers, useful on development path`,
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("controller external listening on namespace %s label %s Version %s release date %s http server on port %s", namespace, watchLabel, cfg.Commit, cfg.Date, cfg.HttpPort)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		clientSet := operator.BuildExternalClient()
+		swarmClientSet := k8s.BuildSwarmExternalClient()
 
-		cl := operator.BuildExternalClient()
-		swarmCl := k8s.BuildSwarmExternalClient()
-		cm := configmap.NewProvider(cl, namespace, workersConfigMapName, watchLabel)
-		podp := pod.NewProvider(cl)
-		swl := crd.NewProvider(swarmCl, namespace, watchLabel)
-		mex := crd.NewProviderMiddleware(cm, swl)
-		ex := app.NewExecutor(mex, podp)
+		crdif := crdinformers.NewSharedInformerFactory(swarmClientSet, 0)
+		sif := informers.NewSharedInformerFactory(clientSet, 0)
 
-		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-		informerFactory := crdinformers.NewSharedInformerFactory(swarmCl, 0)
-		eh := operator.NewResourceEventHandler(q)
-		informer := informerFactory.K8slab().V1alpha1().Swarms()
-		informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    eh.Add,
-			UpdateFunc: eh.Update,
-			DeleteFunc: eh.Delete,
-		})
+		swi := crdif.K8slab().V1alpha1().Swarms().Informer()
+		stsi := sif.Apps().V1().StatefulSets().Informer()
+		podi := sif.Core().V1().Pods().Informer()
 
-		wpf := k8s.NewWorkerPoolFactory(cl, ex)
-		m := app.NewManager(wpf)
-		h := crd.NewHandler(m)
-		p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
-		swarmCtl := operator.NewConsumer(p, q)
+		crdif.Start(ctx.Done())
+		sif.Start(ctx.Done())
 
-		stopCh := make(chan struct{})
-		go swarmCtl.Run(stopCh)
+		// @TODO: Delegate
+		if !cache.WaitForNamedCacheSync("swarm", ctx.Done(), podi.HasSynced, swi.HasSynced, stsi.HasSynced) {
+			log.Fatal("unable to sync pod informer")
+		}
+
+		swl := crdif.K8slab().V1alpha1().Swarms().Lister()
+		stsl := sif.Apps().V1().StatefulSets().Lister()
+		podl := sif.Core().V1().Pods().Lister()
+
+		st := statefulset.NewSelectorStore()
+		appCtl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, st)
+		go appCtl.Run(ctx)
+
+		crdh := crd.NewHandler(nil, appCtl)
+		swCtl := controller.New(crdh, swi, v1alpha1.CrdKind)
+		go swCtl.Run(ctx)
+
+		ast := app.NewState(nil, "")
+		a := app.NewWorkerPool(ast, nil, namespace)
+
+		stsh := statefulset.NewHandler(a, appCtl)
+		stsCtl := controller.New(stsh, stsi, "StatefulSet")
+		go stsCtl.Run(ctx)
+
+		/*	cm := configmap.NewProvider(clientSet, namespace, workersConfigMapName, watchLabel)
+			podp := pod.NewProvider(cl)
+			swl := crd.NewProvider(swarmCl, namespace, watchLabel)
+			mex := crd.NewProviderMiddleware(cm, swl)
+			ex := app.NewExecutor(mex, podp)*/
+
+		//q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		//informerFactory := crdinformers.NewSharedInformerFactory(swarmCl, 0)
+		//eh := operator.NewResourceEventHandler(q)
+		//informer := informerFactory.K8slab().V1alpha1().Swarms()
+		//informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		//	AddFunc:    eh.Add,
+		//	UpdateFunc: eh.Update,
+		//	DeleteFunc: eh.Delete,
+		//})
+		//
+		//wpf := k8s.NewWorkerPoolFactory(cl, ex)
+		//m := app.NewManager(wpf)
+		//h := crd.NewHandler(m)
+
+		//p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
+		//swarmCtl := operator.NewConsumer(p, q)
+		//
+		//stopCh := make(chan struct{})
+		//go swarmCtl.Run(stopCh)
 
 		router := mux.NewRouter()
 		srv := &http.Server{
@@ -79,10 +118,9 @@ var externalCmd = &cobra.Command{
 		if err := srv.Close(); err != nil {
 			log.Errorf("unexpected error on http server close %v", err)
 		}
-		close(stopCh)
+		cancel()
 		_ = srv.Close()
-		wpf.Shutdown()
-		q.ShutDown()
+
 		log.Info("Stopping controller")
 	},
 }

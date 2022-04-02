@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/marcosQuesada/k8s-lab/pkg/config"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"net"
 	"sort"
 	"sync"
@@ -14,15 +13,17 @@ import (
 
 const defaultSleepBeforeNotify = time.Second * 2
 const defaultTimeout = time.Second * 1
+const DefaultWorkerFrequency = time.Second * 2
 
 type Pool interface {
+	Size() int
 	UpdateSize(newSize int)
 	AddWorkerIfNotExists(idx int, name string, IP net.IP) bool
 	RemoveWorkerByName(name string)
 	Terminate()
 }
 
-type assigner interface {
+type workloadBalancer interface {
 	BalanceWorkload(totalWorkers int, version int64) error
 	Workloads() *config.Workloads
 }
@@ -36,7 +37,7 @@ type delegated interface {
 type pool struct {
 	index          map[string]*worker
 	namespace      string
-	state          assigner
+	state          workloadBalancer
 	delegated      delegated
 	version        int64
 	expectedSize   int
@@ -46,7 +47,7 @@ type pool struct {
 }
 
 // NewWorkerPool instantiates workers pool
-func NewWorkerPool(cmp assigner, not delegated, namespace string) Pool {
+func NewWorkerPool(cmp workloadBalancer, not delegated, namespace string) Pool {
 	s := &pool{
 		index:          make(map[string]*worker),
 		namespace:      namespace,
@@ -56,9 +57,15 @@ func NewWorkerPool(cmp assigner, not delegated, namespace string) Pool {
 		stopChan:       make(chan struct{}),
 	}
 
-	go wait.Until(s.conciliate, DefaultWorkerFrequency, s.stopChan)
+	//go wait.Until(s.conciliate, DefaultWorkerFrequency, s.stopChan)
 
 	return s
+}
+
+func (p *pool) Size() int {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	return p.expectedSize
 }
 
 // UpdateSize sets pool expected size
@@ -81,9 +88,9 @@ func (p *pool) UpdateSize(newSize int) {
 		log.Errorf("err on balance started %v", err)
 	}
 
-	if err := p.delegated.Assign(context.Background(), p.state.Workloads()); err != nil {
-		log.Errorf("config error %v", err)
-	}
+	//if err := p.delegated.Assign(context.Background(), p.state.Workloads()); err != nil {
+	//	log.Errorf("config error %v", err)
+	//} //@TODO:
 
 	if previousSize == 0 {
 		return
@@ -117,7 +124,7 @@ func (p *pool) AddWorkerIfNotExists(idx int, name string, IP net.IP) bool {
 		return false
 	}
 
-	p.index[name] = newWorker(idx, name, IP, p.delegated)
+	p.index[name] = newWorker(idx, name, p.delegated)
 
 	log.Debugf("Added worker to Pool name %s IP %s length %d, expectedSize %d", name, IP, len(p.index), p.expectedSize)
 
@@ -158,7 +165,11 @@ func (p *pool) conciliate() {
 		}
 
 		log.Infof("Request scheduled restart to %s", w.name)
-		go p.requestRestart(context.Background(), w)
+		go func() {
+			if err := p.requestRestart(context.Background(), w); err != nil {
+				log.Errorf("unable to restart worker %s error %v", w.name, err)
+			}
+		}()
 	}
 
 	log.Info("Stopping conciliation loop, variation completed!")
@@ -167,15 +178,15 @@ func (p *pool) conciliate() {
 
 func (p *pool) requestRestart(ctx context.Context, w *worker) error {
 	log.Infof("Scheduling worker %s refresh", w.name)
-	time.Sleep(defaultSleepBeforeNotify * time.Duration(2*(1+w.index))) // @TODO: Address it!
-
-	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
-	defer cancel()
-	if err := w.delegated.RestartWorker(ctx, p.namespace, w.name); err != nil {
-		log.Errorf("unable to restart worker, error %v", err)
-		return err
-	}
-	w.MarkRefreshed()
+	//time.Sleep(defaultSleepBeforeNotify * time.Duration(2*(1+w.index))) // @TODO: Address it!
+	//
+	//ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
+	//defer cancel()
+	//if err := w.delegated.RestartWorker(ctx, p.namespace, w.name); err != nil {
+	//	log.Errorf("unable to restart worker, error %v", err)
+	//	return err
+	//}
+	//w.MarkRefreshed()
 	return nil
 }
 

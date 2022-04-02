@@ -42,7 +42,7 @@ func (m *manager) Create(ctx context.Context) error {
 									Properties: map[string]v1.JSONSchemaProps{
 										"namespace":        {Type: "string"},
 										"statefulset-name": {Type: "string"},
-										"config-map-name":  {Type: "string"},
+										"configmap-name":   {Type: "string"},
 										"version":          {Type: "integer"},
 										"size":             {Type: "integer"},
 										"workload": {

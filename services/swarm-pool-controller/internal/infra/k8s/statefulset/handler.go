@@ -10,17 +10,25 @@ import (
 // Pool models an ordered set of workers
 type Pool interface {
 	UpdateSize(size int)
+	Size() int
+}
+
+type AppCtl interface {
+	Matches(namespace, name string, l map[string]string) bool
+	UpdatePool(ctx context.Context, namespace, name string) error
 }
 
 // Handler handles statefulset state updates
 type Handler struct {
-	state Pool
+	state      Pool
+	controller AppCtl
 }
 
 // NewHandler instantiates statefulset handler
-func NewHandler(st Pool) *Handler {
+func NewHandler(st Pool, c AppCtl) *Handler {
 	return &Handler{
-		state: st,
+		state:      st,
+		controller: c,
 	}
 }
 
@@ -44,4 +52,27 @@ func (h *Handler) Deleted(ctx context.Context, obj runtime.Object) {
 	h.state.UpdateSize(0)
 
 	log.Debugf("Deleted StatefulSet %s", ss.Name)
+}
+
+func (h *Handler) Set(ctx context.Context, o runtime.Object) error {
+	ss := o.(*api.StatefulSet)
+	if !h.controller.Matches(ss.Namespace, ss.Name, ss.Labels) {
+		log.Infof("Skiped sts namespace %s name %s labels %v", ss.Namespace, ss.Name, ss.Labels)
+		return nil
+	}
+
+	if int(*ss.Spec.Replicas) == h.state.Size() {
+		return nil
+	}
+	h.state.UpdateSize(int(*ss.Spec.Replicas))
+
+	log.Infof("Set Statefulset Namespace %s name %s Replicas %d", ss.Namespace, ss.Name, uint64(*ss.Spec.Replicas))
+
+	return h.controller.UpdatePool(ctx, ss.Namespace, ss.Name)
+}
+
+func (h *Handler) Remove(ctx context.Context, namespace, name string) error {
+	log.Infof("Deleted StatefulSet Namespace %s name %s", namespace, name)
+
+	return h.controller.UpdatePool(ctx, namespace, name)
 }

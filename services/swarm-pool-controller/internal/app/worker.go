@@ -2,13 +2,11 @@ package app
 
 import (
 	log "github.com/sirupsen/logrus"
-	"net"
 	"sync"
 )
 
 type worker struct {
 	name       string
-	IP         net.IP
 	index      int
 	version    int64
 	state      State
@@ -16,10 +14,9 @@ type worker struct {
 	delegated  delegated
 }
 
-func newWorker(idx int, name string, IP net.IP, d delegated) *worker {
+func newWorker(idx int, name string, d delegated) *worker {
 	return &worker{
 		name:      name,
-		IP:        IP,
 		index:     idx,
 		state:     WaitingAssignation,
 		delegated: d,

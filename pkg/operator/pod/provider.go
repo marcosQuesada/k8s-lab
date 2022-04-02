@@ -19,7 +19,7 @@ func NewProvider(cl kubernetes.Interface) *Provider {
 	}
 }
 
-// RefreshPod deletes pod
+// Refresh deletes pod to force restart on the latest version
 func (p *Provider) Refresh(ctx context.Context, namespace, name string) error {
 	err := p.client.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {

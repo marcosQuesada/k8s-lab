@@ -70,7 +70,6 @@ var externalCmd = &cobra.Command{
 		}
 		close(stopCh)
 		_ = srv.Close()
-		q.ShutDown()
 
 		log.Info("Stopping controller")
 	},

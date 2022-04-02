@@ -80,7 +80,7 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 		})
 	}
 
-	// @TODO: Update as SubResource
+	// @TODO: Replace by lister
 	_, err = p.client.K8slabV1alpha1().Swarms(p.namespace).Update(ctx, sw, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to update config map %v", err)

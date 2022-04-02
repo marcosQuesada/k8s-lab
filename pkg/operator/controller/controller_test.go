@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,13 +15,15 @@ import (
 	"time"
 )
 
-func TestControllerItGetsCreatedOnListeningPodsWithPodAddition(t *testing.T) {
+func TestController_ItGetsCreatedOnListeningPodsWithPodAddition(t *testing.T) {
+	namespace := "default"
+	name := "foo"
 	eh := &fakeHandler{}
-	p := getFakePod("default", "foo")
+	p := getFakePod(namespace, name)
 	cl := fake.NewSimpleClientset(p)
 	i := informers.NewSharedInformerFactory(cl, 0)
 	pi := i.Core().V1().Pods()
-	ctl := NewController(eh, pi.Informer(), "Pod")
+	ctl := New(eh, pi.Informer(), "Pod")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -28,6 +31,15 @@ func TestControllerItGetsCreatedOnListeningPodsWithPodAddition(t *testing.T) {
 
 	if err := pi.Informer().GetIndexer().Add(p); err != nil {
 		t.Fatalf("unable to add entry to indexer,error %v", err)
+	}
+
+	keys := pi.Informer().GetIndexer().ListKeys()
+	if expected, got := 1, len(keys); expected != got {
+		t.Fatalf("handled size does not match, expected %d got %d", expected, got)
+	}
+
+	if expected, got := fmt.Sprintf("%s/%s", namespace, name), keys[0]; expected != got {
+		t.Fatalf("keys do not match, expected %s got %s", expected, got)
 	}
 
 	// informer runner needs time @TODO: think on a real synced solution
@@ -40,7 +52,6 @@ func TestControllerItGetsCreatedOnListeningPodsWithPodAddition(t *testing.T) {
 		t.Errorf("calls do not match, expected %d got %d", expected, got)
 	}
 
-	namespace := "default"
 	gvr := schema.GroupVersionResource{Resource: "pods"}
 	gvk := schema.GroupVersionKind{Group: "apps", Version: "v1"}
 	actions := []core.Action{
@@ -71,12 +82,46 @@ func TestControllerItGetsCreatedOnListeningPodsWithPodAddition(t *testing.T) {
 	}
 }
 
+func TestController_ItGetsDeletedOnListeningPodsWithPodAdditionWithoutBeingPreloadedInTheIndexer(t *testing.T) {
+	namespace := "default"
+	name := "foo"
+	eh := &fakeHandler{}
+	cl := fake.NewSimpleClientset()
+	i := informers.NewSharedInformerFactory(cl, 0)
+	pi := i.Core().V1().Pods()
+	ctl := New(eh, pi.Informer(), "Pod")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go ctl.Run(ctx)
+
+	p := getFakePod(namespace, name)
+	if err := pi.Informer().GetIndexer().Add(p); err != nil {
+		t.Fatalf("unable to add entry to indexer,error %v", err)
+	}
+
+	keys := pi.Informer().GetIndexer().ListKeys()
+	if expected, got := 1, len(keys); expected != got {
+		t.Fatalf("handled size does not match, expected %d got %d", expected, got)
+	}
+
+	// informer runner needs time @TODO: think on a real synced solution
+	time.Sleep(time.Second)
+
+	if expected, got := 0, eh.created(); expected != int(got) {
+		t.Errorf("calls do not match, expected %d got %d", expected, got)
+	}
+	if expected, got := 1, eh.deleted(); expected != int(got) {
+		t.Errorf("calls do not match, expected %d got %d", expected, got)
+	}
+}
+
 type fakeHandler struct {
 	totalCreated int32
 	totalDeleted int32
 }
 
-func (f *fakeHandler) Create(ctx context.Context, o runtime.Object) error {
+func (f *fakeHandler) Set(ctx context.Context, o runtime.Object) error {
 	atomic.AddInt32(&f.totalCreated, 1)
 	return nil
 }

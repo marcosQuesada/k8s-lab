@@ -34,7 +34,7 @@ func (r *resourceEventHandler) Add(obj interface{}) {
 	o := obj.(runtime.Object)
 	r.queue.Add(&event{
 		key: key,
-		obj: o.DeepCopyObject(),
+		obj: o.DeepCopyObject(), // @TODO: REMOVE IT!
 	})
 }
 

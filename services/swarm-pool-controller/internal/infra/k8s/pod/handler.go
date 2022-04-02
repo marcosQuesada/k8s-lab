@@ -66,26 +66,15 @@ func (h *Handler) Updated(ctx context.Context, new, old runtime.Object) {
 		return
 	}
 
-	for _, cond := range pod.Status.Conditions {
-		log.Debugf("Pod %s Condition type %s Status %s", pod.Name, cond.Type, cond.Status)
-	}
-
-	if !isReady(pod) {
-		log.Debugf("Pod is not ready yet %v", pod.Status.Conditions)
-		return
-	}
-
 	idx, err := podIndex(pod)
 	if err != nil {
-		log.Errorf("unable to get pod index %v", err)
+		log.Errorf("unable to get pod index %v, expected statefulset naming", err)
 		return
 	}
 
 	if !h.state.AddWorkerIfNotExists(idx, pod.Name, net.ParseIP(pod.Status.PodIP)) {
 		return
 	}
-
-	log.Debugf("Updated Pod %s READY", pod.Name)
 }
 
 // Deleted on pod deleted handler

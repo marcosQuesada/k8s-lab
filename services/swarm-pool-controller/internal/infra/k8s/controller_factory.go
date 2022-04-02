@@ -52,7 +52,8 @@ func (f *controllerFactory) BootController(namespace, watchedLabel string, jobs 
 	podCtl := operator.Build(podLwa, podH, watchedLabel)
 
 	stsLwa := statefulset.NewListWatcherAdapter(f.client, namespace)
-	stsH := statefulset2.NewHandler(a)
+
+	stsH := statefulset2.NewHandler(a, nil) //@TODO: REMOVE
 	stsCtl := operator.Build(stsLwa, stsH, watchedLabel)
 
 	stopCh := make(chan struct{})

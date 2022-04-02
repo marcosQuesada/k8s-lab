@@ -15,9 +15,10 @@ const (
 )
 
 const (
-	PhasePending = "PENDING"
-	PhaseRunning = "RUNNING"
-	PhaseDone    = "DONE"
+	PhasePending  = "PENDING"
+	PhaseRunning  = "RUNNING"
+	PhaseUpdating = "UPDATING"
+	PhaseDone     = "DONE"
 )
 
 type Job string

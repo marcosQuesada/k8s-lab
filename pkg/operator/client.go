@@ -11,12 +11,12 @@ import (
 
 // BuildInternalClient instantiates internal K8s client
 func BuildInternalClient() kubernetes.Interface {
-	restConfig, err := rest.InClusterConfig()
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		log.Fatalf("unable to get In cluster config, error %v", err)
 	}
 
-	client, err := kubernetes.NewForConfig(restConfig)
+	client, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		log.Fatalf("unable to build client from config, error %v", err)
 	}
@@ -39,6 +39,15 @@ func BuildExternalClient() kubernetes.Interface {
 	}
 
 	return client
+}
+
+func BuildAPIInternalClient() apiextensionsclientset.Interface {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Fatalf("unable to get In cluster config, error %v", err)
+	}
+
+	return apiextensionsclientset.NewForConfigOrDie(config)
 }
 
 func BuildAPIExternalClient() apiextensionsclientset.Interface {
