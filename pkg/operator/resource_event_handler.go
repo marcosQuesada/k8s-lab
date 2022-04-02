@@ -2,10 +2,16 @@ package operator
 
 import (
 	log "github.com/sirupsen/logrus"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
+
+// EventHandler gets called on each event variation from informer
+type EventHandler interface {
+	Add(obj interface{})
+	Update(oldObj, newObj interface{})
+	Delete(obj interface{})
+}
 
 type resourceEventHandler struct {
 	queue workqueue.Interface
@@ -31,11 +37,7 @@ func (r *resourceEventHandler) Add(obj interface{}) {
 	}
 
 	log.Debugf("Add %T: %s", obj, key)
-	o := obj.(runtime.Object)
-	r.queue.Add(&event{
-		key: key,
-		obj: o.DeepCopyObject(), // @TODO: REMOVE IT!
-	})
+	r.queue.Add(key)
 }
 
 // Update object to the queue on valid label
@@ -52,13 +54,7 @@ func (r *resourceEventHandler) Update(oldObj, newObj interface{}) {
 	}
 
 	log.Debugf("Update %T: %s", oldObj, key)
-	o := oldObj.(runtime.Object)
-	n := newObj.(runtime.Object)
-	r.queue.Add(&updateEvent{
-		key:    key,
-		newObj: n.DeepCopyObject(),
-		oldObj: o.DeepCopyObject(),
-	})
+	r.queue.Add(key)
 }
 
 // Delete object to the queue on valid label
@@ -75,9 +71,5 @@ func (r *resourceEventHandler) Delete(obj interface{}) {
 	}
 
 	log.Debugf("Delete %T: %s", obj, key)
-	o := obj.(runtime.Object)
-	r.queue.Add(&event{
-		key: key,
-		obj: o.DeepCopyObject(),
-	})
+	r.queue.Add(key)
 }

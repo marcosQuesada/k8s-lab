@@ -6,7 +6,6 @@ import (
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	"github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s"
-	"github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd"
 	crdinformers "github.com/marcosQuesada/k8s-lab/services/config-reloader-controller/internal/infra/k8s/crd/generated/informers/externalversions"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/tools/cache"
@@ -39,12 +38,8 @@ var externalCmd = &cobra.Command{
 			DeleteFunc: eh.Delete,
 		})
 
-		h := crd.NewHandler()
-		p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
-		ctl := operator.NewConsumer(p, q)
-
 		stopCh := make(chan struct{})
-		go ctl.Run(stopCh)
+		informerFactory.Start(stopCh)
 
 		router := mux.NewRouter()
 		srv := &http.Server{
