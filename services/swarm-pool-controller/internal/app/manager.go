@@ -8,21 +8,16 @@ import (
 	"sync"
 )
 
-type PoolFactory interface {
-	BootController(namespace, watchedLabel string, jobs []config.Job) Pool
-	Terminate(namespace, watchedLabel string)
-}
-
 type manager struct {
-	factory PoolFactory
-	index   map[string]Pool
-	mutex   sync.RWMutex
+	index     map[string]Pool
+	mutex     sync.RWMutex
+	delegated delegated
 }
 
-func NewManager(f PoolFactory) *manager {
+func NewManager(d delegated) *manager {
 	return &manager{
-		factory: f,
-		index:   make(map[string]Pool),
+		index:     make(map[string]Pool),
+		delegated: d,
 	}
 }
 
@@ -43,7 +38,6 @@ func (m *manager) Delete(namespace, label string) {
 	if _, ok := m.index[k]; !ok {
 		return
 	}
-	m.factory.Terminate(namespace, label)
 
 	delete(m.index, k)
 }
@@ -63,7 +57,8 @@ func (m *manager) add(namespace, label string, version int64, workloads []v1alph
 	}
 
 	log.Infof("Booting controller on namespace %s label %s total workloads %d", namespace, label, len(wp))
-	m.index[k] = m.factory.BootController(namespace, label, wp)
+	ast := NewState(wp, label)
+	m.index[k] = NewWorkerPool(namespace, version, ast, m.delegated)
 }
 
 // @TODO: Unify!

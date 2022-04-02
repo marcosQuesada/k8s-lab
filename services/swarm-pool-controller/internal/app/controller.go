@@ -58,7 +58,7 @@ func (c *swarmController) Process(ctx context.Context, namespace, name string) e
 	return nil
 }
 
-func (c *swarmController) UpdatePool(ctx context.Context, namespace, name string) error {
+func (c *swarmController) UpdatePool(ctx context.Context, namespace, name string, size int) error {
 	c.enqueue(updatePool, namespace, name)
 	return nil
 }

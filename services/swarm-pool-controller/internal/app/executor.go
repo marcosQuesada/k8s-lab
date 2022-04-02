@@ -35,3 +35,20 @@ func (e *executor) RestartWorker(ctx context.Context, namespace, name string) er
 	log.Infof("Restarting worker %s", name)
 	return e.manager.Refresh(ctx, namespace, name)
 }
+
+type nopExecutor struct {
+}
+
+func NewNopExecutor() *nopExecutor {
+	return &nopExecutor{}
+}
+
+func (e *nopExecutor) Assign(ctx context.Context, w *ap.Workloads) error {
+	log.Infof("Persist Workload version %d to assign to %v", w.Version, w.Workloads)
+	return nil
+}
+
+func (e *nopExecutor) RestartWorker(ctx context.Context, namespace, name string) error {
+	log.Infof("Restarting worker %s", name)
+	return nil
+}

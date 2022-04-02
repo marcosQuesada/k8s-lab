@@ -56,6 +56,11 @@ var externalCmd = &cobra.Command{
 		podl := sif.Core().V1().Pods().Lister()
 
 		st := statefulset.NewSelectorStore()
+
+		// @TODO: Connect factory
+		ex := app.NewNopExecutor()
+		_ = app.NewManager(ex)
+
 		appCtl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, st)
 		go appCtl.Run(ctx)
 
@@ -63,10 +68,7 @@ var externalCmd = &cobra.Command{
 		swCtl := controller.New(crdh, swi, v1alpha1.CrdKind)
 		go swCtl.Run(ctx)
 
-		ast := app.NewState(nil, "")
-		a := app.NewWorkerPool(ast, nil, namespace)
-
-		stsh := statefulset.NewHandler(a, appCtl)
+		stsh := statefulset.NewHandler(appCtl)
 		stsCtl := controller.New(stsh, stsi, "StatefulSet")
 		go stsCtl.Run(ctx)
 

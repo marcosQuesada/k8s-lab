@@ -31,14 +31,19 @@ func NewHandler(st Pool) *Handler {
 	}
 }
 
-// Created on pod creation handler
-func (h *Handler) Created(_ context.Context, obj runtime.Object) {
+// Set on pod creation handler
+func (h *Handler) Set(ctx context.Context, obj runtime.Object) {
 	pod := obj.(*api.Pod)
 
 	if !isReadyPod(pod) {
 		return
 	}
 
+	// Quick deletion detection
+	if hasDeletionTimestamp(pod) || isTerminated(pod) {
+		h.Remove(ctx, pod.Namespace, pod.Name)
+		return
+	}
 	idx, err := podIndex(pod)
 	if err != nil {
 		log.Errorf("unable to get pod index %v", err)
@@ -52,37 +57,11 @@ func (h *Handler) Created(_ context.Context, obj runtime.Object) {
 	log.Debugf("Created Pod %s IP %s", pod.Name, pod.Status.PodIP)
 }
 
-// Updated on pod updated handler
-func (h *Handler) Updated(ctx context.Context, new, old runtime.Object) {
-	pod := new.(*api.Pod)
+// Remove on pod deleted handler
+func (h *Handler) Remove(_ context.Context, namespace, name string) {
+	log.Debugf("Deleted POD %s/%s", namespace, name)
 
-	// Quick deletion detection
-	if hasDeletionTimestamp(pod) || isTerminated(pod) {
-		h.Deleted(ctx, pod)
-		return
-	}
-
-	if !isReadyPod(pod) {
-		return
-	}
-
-	idx, err := podIndex(pod)
-	if err != nil {
-		log.Errorf("unable to get pod index %v, expected statefulset naming", err)
-		return
-	}
-
-	if !h.state.AddWorkerIfNotExists(idx, pod.Name, net.ParseIP(pod.Status.PodIP)) {
-		return
-	}
-}
-
-// Deleted on pod deleted handler
-func (h *Handler) Deleted(_ context.Context, obj runtime.Object) {
-	pod := obj.(*api.Pod)
-	log.Debugf("Deleted POD %s", pod.Name)
-
-	h.state.RemoveWorkerByName(pod.Name)
+	h.state.RemoveWorkerByName(name)
 }
 
 func isReadyPod(pod *api.Pod) bool {

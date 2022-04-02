@@ -47,10 +47,11 @@ type pool struct {
 }
 
 // NewWorkerPool instantiates workers pool
-func NewWorkerPool(cmp workloadBalancer, not delegated, namespace string) Pool {
+func NewWorkerPool(namespace string, version int64, cmp workloadBalancer, not delegated) Pool {
 	s := &pool{
 		index:          make(map[string]*worker),
 		namespace:      namespace,
+		version:        version,
 		state:          cmp,
 		delegated:      not,
 		underVariation: true,
