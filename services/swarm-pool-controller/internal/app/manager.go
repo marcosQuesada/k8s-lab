@@ -21,19 +21,16 @@ func NewManager(d delegated) *manager {
 	}
 }
 
-func (m *manager) Add(namespace, label string, version int64, workloads []v1alpha1.Job) {
-	log.Infof("Adding swarm namespace %s label %s version %d workloads %v", namespace, label, version, workloads)
-	m.add(namespace, label, version, workloads)
-}
-
-func (m *manager) Update(namespace, label string, version int64, workloads []v1alpha1.Job) {
-	log.Infof("Update swarm namespace %s label %s version %d workloads %v", namespace, label, version, workloads)
+func (m *manager) Add(namespace, name string, version int64, workloads []v1alpha1.Job) {
+	log.Infof("Adding swarm namespace %s name %s version %d workloads %v", namespace, name, version, workloads)
+	m.add(namespace, name, version, workloads)
 }
 
 func (m *manager) Delete(namespace, label string) {
 	log.Infof("Delete swarm namespace %s label %s", namespace, label)
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
 	k := key(namespace, label)
 	if _, ok := m.index[k]; !ok {
 		return
@@ -42,10 +39,10 @@ func (m *manager) Delete(namespace, label string) {
 	delete(m.index, k)
 }
 
-// @TODO: version!
 func (m *manager) add(namespace, label string, version int64, workloads []v1alpha1.Job) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
 	k := key(namespace, label)
 	if _, ok := m.index[k]; ok {
 		return
@@ -58,10 +55,9 @@ func (m *manager) add(namespace, label string, version int64, workloads []v1alph
 
 	log.Infof("Booting controller on namespace %s label %s total workloads %d", namespace, label, len(wp))
 	ast := NewState(wp, label)
-	m.index[k] = NewWorkerPool(namespace, version, ast, m.delegated)
+	m.index[k] = NewWorkerPool(version, ast, m.delegated)
 }
 
-// @TODO: Unify!
 func key(namespace, label string) string {
 	return fmt.Sprintf("%s/%s", namespace, label)
 }

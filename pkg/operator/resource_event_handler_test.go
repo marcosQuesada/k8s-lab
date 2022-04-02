@@ -4,8 +4,6 @@ import (
 	"container/list"
 	"fmt"
 	ap "github.com/marcosQuesada/k8s-lab/pkg/config"
-	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sync"
 	"testing"
 	"time"
@@ -233,28 +231,5 @@ func TestFakeQueueBehaviourDevelopmentTest(t *testing.T) {
 	_, shut := queue.Get()
 	if !shut {
 		t.Error("expected queue on shutdown")
-	}
-}
-
-func getFakePod(namespace, name string) apiv1.Pod {
-	return apiv1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: apiv1.PodSpec{
-			Containers: []apiv1.Container{
-				{
-					Name:            "nginx",
-					Image:           "nginx",
-					ImagePullPolicy: "Always",
-				},
-			},
-			RestartPolicy: apiv1.RestartPolicyNever,
-		},
 	}
 }

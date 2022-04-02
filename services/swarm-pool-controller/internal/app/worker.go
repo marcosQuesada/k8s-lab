@@ -6,6 +6,7 @@ import (
 )
 
 type worker struct {
+	namespace  string
 	name       string
 	index      int
 	version    int64
@@ -14,8 +15,9 @@ type worker struct {
 	delegated  delegated
 }
 
-func newWorker(idx int, name string, d delegated) *worker {
+func newWorker(idx int, namespace, name string, d delegated) *worker {
 	return &worker{
+		namespace: namespace,
 		name:      name,
 		index:     idx,
 		state:     WaitingAssignation,

@@ -20,17 +20,6 @@ import (
 
 const maxRetries = 5
 
-type action string
-
-const processSwarm = action("processSwarm")
-const updatePool = action("updatePool")
-
-type event struct {
-	action    action
-	namespace string
-	name      string
-}
-
 type swarmController struct {
 	queue             workqueue.RateLimitingInterface
 	swarmClient       versioned.Interface
@@ -52,14 +41,14 @@ func NewSwarmController(cl versioned.Interface, swl v1alpha1.SwarmLister, stsl a
 	}
 }
 
-// Process swarm entry happens on swarm creation @TODO: Update?
+// Process swarm entry happens on swarm creation
 func (c *swarmController) Process(ctx context.Context, namespace, name string) error {
-	c.enqueue(processSwarm, namespace, name)
+	c.queue.Add(newProcessEvent(namespace, name))
 	return nil
 }
 
 func (c *swarmController) UpdatePool(ctx context.Context, namespace, name string, size int) error {
-	c.enqueue(updatePool, namespace, name)
+	c.queue.Add(newUpdateEvent(namespace, name, size))
 	return nil
 }
 
@@ -124,7 +113,7 @@ func (c *swarmController) Matches(namespace, name string, l map[string]string) b
 	return c.selectorStore.Matches(namespace, name, l)
 }
 
-func (c *swarmController) updatePool(ctx context.Context, namespace, name string) error {
+func (c *swarmController) updatePool(ctx context.Context, namespace, name string, size int) error {
 	swarmName, ok := c.selectorStore.SwarmName(namespace, name)
 	if !ok {
 		return nil
@@ -184,7 +173,7 @@ func (c *swarmController) processNextItem(ctx context.Context) bool {
 	}
 	defer c.queue.Done(e)
 
-	ev := e.(event)
+	ev := e.(processEvent)
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 
@@ -207,21 +196,13 @@ func (c *swarmController) processNextItem(ctx context.Context) bool {
 	return true
 }
 
-func (c *swarmController) handle(ctx context.Context, ev event) error {
-	switch ev.action {
-	case processSwarm:
-		return c.process(ctx, ev.namespace, ev.name)
-	case updatePool:
-		return c.updatePool(ctx, ev.namespace, ev.name)
+func (c *swarmController) handle(ctx context.Context, ev Event) error {
+	switch e := ev.(type) {
+	case processEvent:
+		return c.process(ctx, e.namespace, e.name)
+	case updateEvent:
+		return c.updatePool(ctx, e.namespace, e.name, e.size)
 	}
 
-	return fmt.Errorf("action %s not handled", ev.action)
-}
-
-func (c *swarmController) enqueue(a action, namespace, name string) {
-	c.queue.Add(event{
-		action:    a,
-		namespace: namespace,
-		name:      name,
-	})
+	return fmt.Errorf("action %T not handled", ev)
 }

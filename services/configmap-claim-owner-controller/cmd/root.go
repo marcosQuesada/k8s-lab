@@ -27,6 +27,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	cfg.SetCoreFlags(rootCmd, appID)
 }
 
 func initConfig() {

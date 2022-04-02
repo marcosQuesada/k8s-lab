@@ -9,7 +9,6 @@ import (
 
 type App interface {
 	Add(namespace, label string, version int64, workloads []v1alpha1.Job)
-	Update(namespace, label string, version int64, workloads []v1alpha1.Job)
 	Delete(namespace, label string)
 }
 

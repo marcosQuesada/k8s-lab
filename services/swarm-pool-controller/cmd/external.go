@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/mux"
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator/controller"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
@@ -65,11 +64,11 @@ var externalCmd = &cobra.Command{
 		go appCtl.Run(ctx)
 
 		crdh := crd.NewHandler(nil, appCtl)
-		swCtl := controller.New(crdh, swi, v1alpha1.CrdKind)
+		swCtl := operator.New(crdh, swi, v1alpha1.CrdKind)
 		go swCtl.Run(ctx)
 
 		stsh := statefulset.NewHandler(appCtl)
-		stsCtl := controller.New(stsh, stsi, "StatefulSet")
+		stsCtl := operator.New(stsh, stsi, "StatefulSet")
 		go stsCtl.Run(ctx)
 
 		/*	cm := configmap.NewProvider(clientSet, namespace, workersConfigMapName, watchLabel)

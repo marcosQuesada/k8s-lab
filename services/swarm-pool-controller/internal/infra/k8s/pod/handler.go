@@ -6,7 +6,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"net"
 	"strconv"
 	"strings"
 )
@@ -15,7 +14,7 @@ var errBadStatefulSetPodName = errors.New("malformed pod name, expected stateful
 
 // Pool models an ordered set of workers
 type Pool interface {
-	AddWorkerIfNotExists(idx int, name string, IP net.IP) bool
+	AddWorkerIfNotExists(idx int, namespace, name string) bool
 	RemoveWorkerByName(name string)
 }
 
@@ -50,7 +49,7 @@ func (h *Handler) Set(ctx context.Context, obj runtime.Object) {
 		return
 	}
 
-	if !h.state.AddWorkerIfNotExists(idx, pod.Name, net.ParseIP(pod.Status.PodIP)) {
+	if !h.state.AddWorkerIfNotExists(idx, pod.Namespace, pod.Name) {
 		return
 	}
 
