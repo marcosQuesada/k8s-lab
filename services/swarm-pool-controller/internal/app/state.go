@@ -22,8 +22,8 @@ type state struct {
 	mutex   sync.RWMutex
 }
 
-// NewState holds workload assignations in the workers pool
-func NewState(keySet []config.Job, setName string) *state {
+// newState holds workload assignations in the workers pool
+func newState(keySet []config.Job, setName string) *state {
 	return &state{
 		jobs:    keySet,
 		setName: setName,

@@ -111,9 +111,14 @@ go test -v --race ./services/swarm-pool-controller/...
 ```
 
 ## Development Notes
+
+### Pending
+- Swarm UpdateStatus
+- Pod restart as an option
+
 ### Run controller externally
 ```
-go run ./services/swarm-pool-controller external
+go run ./services/swarm-pool-controller external --log-level=debug
 ```
 
 ### CRD API generation

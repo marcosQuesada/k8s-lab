@@ -125,6 +125,7 @@ func (c *swarmController) handle(ctx context.Context, ev Event) error {
 	return fmt.Errorf("action %T not handled", ev)
 }
 
+// process happens on swarm create/update event
 func (c *swarmController) process(ctx context.Context, namespace, name string) error {
 	log.Infof("Process swarm %s %s", namespace, name)
 	sw, err := c.swarmLister.Swarms(namespace).Get(name)
@@ -140,6 +141,7 @@ func (c *swarmController) process(ctx context.Context, namespace, name string) e
 		return fmt.Errorf("unable to get statefulset from swarm %s on namespace %s error %v", name, namespace, err)
 	}
 
+	// idempotent call
 	if err := c.selectorStore.Register(namespace, sts.Name, sts.Spec.Selector); err != nil {
 		return fmt.Errorf("unable to register key %s %s error %v", namespace, sts.Name, err)
 	}
@@ -187,6 +189,7 @@ func (c *swarmController) updateSwarm(ctx context.Context, namespace, name strin
 	if err != nil {
 		return nil, fmt.Errorf("unable to get swarm namespace %s name %s", namespace, name)
 	}
+
 	log.Infof("Update swarm %s namespace %s statefulset name %s configmap name %s version %d workloads %d Phase %s",
 		name, namespace, sw.Spec.StatefulSetName, sw.Spec.ConfigMapName, sw.Spec.Version, len(sw.Spec.Workload), sw.Status.Phase)
 
@@ -213,7 +216,7 @@ func (c *swarmController) podNamesFromSelector(namespace string, ls *metav1.Labe
 		return nil, fmt.Errorf("unable to get pods from selector, error %v", err)
 	}
 
-	names := []string{}
+	var names []string
 	for _, pd := range pods {
 		if pod.IsTerminated(pd) || pod.HasDeletionTimestamp(pd) {
 			continue

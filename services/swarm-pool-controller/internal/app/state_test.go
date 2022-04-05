@@ -56,7 +56,7 @@ func TestDiffCalculationOnStaticSet(t *testing.T) {
 		"orders",
 	}
 
-	app := NewState(set, fakeWorkerName)
+	app := newState(set, fakeWorkerName)
 	totalWorkers := 3
 	var version int64 = 1
 	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
@@ -87,7 +87,7 @@ func TestDiffCalculationOnNounStaticSet(t *testing.T) {
 		"stream:xxctv12",
 		"stream:yxctv3",
 	}
-	app := NewState(set, fakeWorkerName)
+	app := newState(set, fakeWorkerName)
 	totalWorkers := 2
 	var version int64 = 1
 	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
@@ -114,7 +114,7 @@ func TestDiffCalculationOnNounStaticSet(t *testing.T) {
 }
 
 func TestShardingByTotalWorkersOnASingleNodeComposition(t *testing.T) {
-	app := NewState(jobs, fakeWorkerName)
+	app := newState(jobs, fakeWorkerName)
 	totalWorkers := 1
 	var version int64 = 1
 	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
@@ -132,7 +132,7 @@ func TestShardingByTotalWorkersOnASingleNodeComposition(t *testing.T) {
 }
 
 func TestOnScalingUpWorkersOnceAssigned(t *testing.T) {
-	app := NewState(jobs, fakeWorkerName)
+	app := newState(jobs, fakeWorkerName)
 	totalWorkers := 2
 	var version int64 = 1
 	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
@@ -179,7 +179,7 @@ func TestOnScalingUpWorkersOnceAssigned(t *testing.T) {
 - 1: inc: 13    exc: 5
 */
 func TestOnScalingDownWorkersOnceAssigned(t *testing.T) {
-	app := NewState(jobs, fakeWorkerName)
+	app := newState(jobs, fakeWorkerName)
 	totalWorkers := 3
 	var version int64 = 1
 
@@ -224,7 +224,7 @@ func TestOnScalingDownWorkersOnceAssigned(t *testing.T) {
 }
 
 func TestOnScalingToZeroWorkersOnceAssigned(t *testing.T) {
-	app := NewState(jobs, fakeWorkerName)
+	app := newState(jobs, fakeWorkerName)
 	totalWorkers := 3
 	var version int64 = 1
 	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
@@ -273,7 +273,7 @@ var realScenarioBug = []config2.Job{
 }
 
 func TestScalingUpOnNounWorkloadSizeAssignsExpectedJobs(t *testing.T) {
-	app := NewState(realScenarioBug, fakeWorkerName)
+	app := newState(realScenarioBug, fakeWorkerName)
 	totalWorkers := 2
 	var version int64 = 1
 	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {

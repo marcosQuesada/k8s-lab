@@ -31,15 +31,11 @@ func (m *manager) Process(ctx context.Context, namespace, name string, version i
 	defer m.mutex.Unlock()
 
 	k := namespace + "/" + name
-	if _, ok := m.index[k]; ok {
-		return
-	}
-
 	wp := []config.Job{}
 	for _, w := range workloads {
 		wp = append(wp, config.Job(w))
 	}
-	ast := NewState(wp, k)
+	ast := newState(wp, k)
 	m.index[k] = newWorkerPool(version, ast, m.delegated)
 }
 
