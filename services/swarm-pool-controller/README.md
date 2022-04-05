@@ -105,7 +105,16 @@ kubectl rollout restart deployment/swarm-controller
 kubectl rollout restart statefulset/swarm-worker
 ```
 
+## Run test suite
+```
+go test -v --race ./services/swarm-pool-controller/...
+```
+
 ## Development Notes
+### Run controller externally
+```
+go run ./services/swarm-pool-controller external
+```
 
 ### CRD API generation
 ```

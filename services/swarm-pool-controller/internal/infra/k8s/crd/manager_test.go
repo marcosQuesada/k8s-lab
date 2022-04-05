@@ -9,6 +9,7 @@ import (
 )
 
 func TestItRecognizedCreatedCrdDevelopment(t *testing.T) {
+	t.Skip()
 	api := operator.BuildAPIExternalClient()
 	i := crd.NewManager(api)
 	m := NewManager(i)
@@ -19,6 +20,7 @@ func TestItRecognizedCreatedCrdDevelopment(t *testing.T) {
 }
 
 func TestItChecksCRDAcceptedDevelopment(t *testing.T) {
+	t.Skip()
 	api := operator.BuildAPIExternalClient()
 	i := crd.NewManager(api)
 	m := NewManager(i)

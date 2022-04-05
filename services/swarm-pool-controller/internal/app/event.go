@@ -4,6 +4,7 @@ type action string
 
 const processSwarm = action("processSwarm")
 const updatePool = action("updatePool")
+const deletePool = action("deletePool")
 
 type Event interface {
 	Type() action
@@ -34,4 +35,17 @@ func newUpdateEvent(namespace, name string, size int) updateEvent {
 
 func (e updateEvent) Type() action {
 	return updatePool
+}
+
+type deleteEvent struct {
+	namespace string
+	name      string
+}
+
+func newDeleteEvent(namespace, name string) deleteEvent {
+	return deleteEvent{namespace: namespace, name: name}
+}
+
+func (e deleteEvent) Type() action {
+	return deletePool
 }

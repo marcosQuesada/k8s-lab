@@ -16,25 +16,19 @@ const defaultConfigKey = "config.yml"
 
 // Provider implements config repository in top of configmap
 type Provider struct {
-	client         kubernetes.Interface
-	namespace      string
-	configMapName  string
-	deploymentName string
+	client kubernetes.Interface
 }
 
 // NewProvider instantiate configmap provider
-func NewProvider(cl kubernetes.Interface, namespace, configMapName, deploymentName string) *Provider {
+func NewProvider(cl kubernetes.Interface) *Provider {
 	return &Provider{
-		client:         cl,
-		namespace:      namespace,
-		configMapName:  configMapName,
-		deploymentName: deploymentName,
+		client: cl,
 	}
 }
 
 // Set updates workload assignation to configmap
-func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
-	cm, err := p.client.CoreV1().ConfigMaps(p.namespace).Get(ctx, p.configMapName, metav1.GetOptions{})
+func (p *Provider) Set(ctx context.Context, namespace, name string, a *cfg.Workloads) error {
+	cm, err := p.client.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to get config map %v", err)
 	}
@@ -46,7 +40,7 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 	}
 
 	cm.Data[defaultConfigKey] = buffer.String()
-	_, err = p.client.CoreV1().ConfigMaps(p.namespace).Update(ctx, cm, metav1.UpdateOptions{})
+	_, err = p.client.CoreV1().ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("unable to update config map %v", err)
 	}
@@ -55,8 +49,8 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 }
 
 // Get returns workload assignation from configmap
-func (p *Provider) Get(ctx context.Context) (*cfg.Workloads, error) {
-	cm, err := p.client.CoreV1().ConfigMaps(p.namespace).Get(ctx, p.configMapName, metav1.GetOptions{})
+func (p *Provider) Get(ctx context.Context, namespace, name string) (*cfg.Workloads, error) {
+	cm, err := p.client.CoreV1().ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to get config map %v", err)
 	}

@@ -14,7 +14,7 @@ func TestNewProvider_ItUpdatesConfigMapOnAssignWorkload(t *testing.T) {
 	t.Skip()
 	var namespace = "swarm"
 	var configMapName = "swarm-worker-config"
-	var deploymentName = "swarm-worker"
+	//var deploymentName = "swarm-worker"
 
 	clientset := operator.BuildExternalClient()
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), configMapName, metav1.GetOptions{})
@@ -23,7 +23,7 @@ func TestNewProvider_ItUpdatesConfigMapOnAssignWorkload(t *testing.T) {
 	}
 	spew.Dump(cm.Data)
 
-	p := NewProvider(clientset, namespace, configMapName, deploymentName)
+	p := NewProvider(clientset, namespace, configMapName)
 	w := &config.Workloads{
 		Version: 1,
 		Workloads: map[string]*config.Workload{
@@ -43,7 +43,7 @@ func TestNewProvider_ItGetsWorkloadsFromConfigMap(t *testing.T) {
 	t.Skip()
 	var namespace = "swarm"
 	var configMapName = "swarm-worker-config"
-	var deploymentName = "swarm-worker"
+	//var deploymentName = "swarm-worker"
 
 	clientset := operator.BuildExternalClient()
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), configMapName, metav1.GetOptions{})
@@ -52,7 +52,7 @@ func TestNewProvider_ItGetsWorkloadsFromConfigMap(t *testing.T) {
 	}
 	spew.Dump(cm.Data)
 
-	p := NewProvider(clientset, namespace, configMapName, deploymentName)
+	p := NewProvider(clientset, namespace, configMapName)
 	w, err := p.Get(context.Background())
 	if err != nil {
 		t.Fatalf("unexepcted error setting workload %v, got %v", w, err)

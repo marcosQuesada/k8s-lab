@@ -24,13 +24,10 @@ spec:
             spec:
               type: object
               required:
-                - namespace
                 - statefulset-name
                 - configmap-name
                 - workload
               properties:
-                namespace:
-                  type: string
                 statefulset-name:
                   type: string
                 configmap-name:
@@ -71,9 +68,6 @@ spec:
                 phase:
                   type: string
       additionalPrinterColumns:
-        - name: Namespace
-          type: string
-          jsonPath: .spec.namespace
         - name: StatefulSet
           type: string
           jsonPath: .spec.statefulset-name

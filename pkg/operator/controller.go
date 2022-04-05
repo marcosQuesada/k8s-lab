@@ -18,10 +18,12 @@ import (
 )
 
 const maxRetries = 5
+const handleTimeout = time.Second
+const workerFrequency = time.Second
 
 type Handler interface {
-	Set(ctx context.Context, o runtime.Object) error
-	Remove(ctx context.Context, namespace, name string) error
+	Handle(ctx context.Context, o runtime.Object) error
+	HandleDeletion(ctx context.Context, namespace, name string) error
 }
 
 type Controller struct {
@@ -45,21 +47,17 @@ func New(eventHandler Handler, informer cache.SharedIndexInformer, resourceType 
 			ctl.enqueue(obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
+			// @TODO: Should be recover event struct ?
 			diff := cmp.Diff(old, new)
 			cleanDiff := strings.TrimFunc(diff, func(r rune) bool {
 				return !unicode.IsGraphic(r)
 			})
 			fmt.Printf("UPDATE %s diff: %s \n", resourceType, cleanDiff)
+
 			ctl.enqueue(new)
 		},
 		DeleteFunc: func(obj interface{}) {
-			key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-			if err != nil {
-				log.Errorf("Unable to Delete event from object %T error %v", obj, err)
-				return
-			}
-			log.Infof("Processing delete to %v: %s", resourceType, key)
-			queue.Add(key)
+			ctl.enqueue(obj)
 		},
 	})
 
@@ -69,7 +67,6 @@ func New(eventHandler Handler, informer cache.SharedIndexInformer, resourceType 
 func (c *Controller) Run(ctx context.Context) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
-	//go c.informer.Run(ctx.Done()) //@TODO informerFactory will take care of it
 
 	if !cache.WaitForNamedCacheSync(c.resourceType, ctx.Done(), c.informer.HasSynced) {
 		return
@@ -77,7 +74,7 @@ func (c *Controller) Run(ctx context.Context) {
 
 	log.Infof("%s First Cache Synced on version %s", c.resourceType, c.informer.LastSyncResourceVersion())
 
-	wait.UntilWithContext(ctx, c.worker, time.Second)
+	wait.UntilWithContext(ctx, c.worker, workerFrequency)
 }
 
 func (c *Controller) worker(ctx context.Context) {
@@ -88,7 +85,7 @@ func (c *Controller) worker(ctx context.Context) {
 func (c *Controller) processNextItem(ctx context.Context) bool {
 	k, quit := c.queue.Get()
 	if quit {
-		log.Error("Queue goes down!")
+		log.Infof("Queue from %s goes down!", c.resourceType)
 		return false
 	}
 	defer c.queue.Done(k)
@@ -96,8 +93,9 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 	log.Infof("%s Cache Synced on version %s", c.resourceType, c.informer.LastSyncResourceVersion())
 
 	key := k.(string)
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	ctx, cancel := context.WithTimeout(ctx, handleTimeout)
 	defer cancel()
+
 	err := c.handle(ctx, key)
 	if err == nil || errors.HasStatusCause(err, v1.NamespaceTerminatingCause) {
 		c.queue.Forget(k)
@@ -129,24 +127,24 @@ func (c *Controller) handle(ctx context.Context, key string) error {
 			return fmt.Errorf("unable to split  object with key %s from store: %v", key, err)
 		}
 		log.Infof("handling deletion on key %s", key)
-		return c.eventHandler.Remove(ctx, namespace, name)
-
+		return c.eventHandler.HandleDeletion(ctx, namespace, name)
 	}
+
 	o, ok := obj.(runtime.Object)
 	if !ok {
 		return fmt.Errorf("unexpected object type on handler, expected runtime object got %T", obj)
 	}
 
-	return c.eventHandler.Set(ctx, o)
+	return c.eventHandler.Handle(ctx, o)
 }
 
 func (c *Controller) enqueue(obj interface{}) {
-	key, err := cache.MetaNamespaceKeyFunc(obj)
+	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
 	if err != nil {
 		log.Errorf("Unable to Update event from object %T error %v", obj, err)
 		utilruntime.HandleError(err)
 		return
 	}
-	log.Infof("enqueue %T: %s", obj, key)
+	log.Debugf("enqueue %T: %s", obj, key)
 	c.queue.Add(key)
 }

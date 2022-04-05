@@ -32,7 +32,7 @@ func NewState(keySet []config.Job, setName string) *state {
 }
 
 // BalanceWorkload balances configured workload between workers
-func (s *state) BalanceWorkload(totalWorkers int, version int64) error {
+func (s *state) BalanceWorkload(totalWorkers int, version int64) (*config.Workloads, error) {
 	log.Infof("State balance started, Recalculate assignations total workers: %d", totalWorkers)
 
 	s.mutex.Lock()
@@ -40,7 +40,7 @@ func (s *state) BalanceWorkload(totalWorkers int, version int64) error {
 
 	if totalWorkers == 0 {
 		s.cleanAssignations(0)
-		return nil
+		return s.config, nil
 	}
 
 	partSize := len(s.jobs) / totalWorkers
@@ -73,7 +73,7 @@ func (s *state) BalanceWorkload(totalWorkers int, version int64) error {
 		s.cleanAssignations(totalWorkers)
 	}
 
-	return nil
+	return s.config, nil
 }
 
 // Workloads returns last computed workloads assignations

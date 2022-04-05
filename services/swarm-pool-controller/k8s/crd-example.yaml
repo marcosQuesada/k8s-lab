@@ -4,7 +4,6 @@ metadata:
   name: swarm-config
   namespace: swarm
 spec:
-  namespace: swarm
   statefulset-name: swarm-worker
   configmap-name: swarm-worker-config
   version: 1

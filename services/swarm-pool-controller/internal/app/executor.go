@@ -11,7 +11,7 @@ type workerManager interface {
 }
 
 type delegatedStorage interface {
-	Set(ctx context.Context, a *ap.Workloads) error
+	Set(ctx context.Context, namespace, configMapName string, a *ap.Workloads) error
 }
 
 type executor struct {
@@ -26,9 +26,9 @@ func NewExecutor(s delegatedStorage, m workerManager) *executor {
 	}
 }
 
-func (e *executor) Assign(ctx context.Context, w *ap.Workloads) (err error) {
+func (e *executor) Assign(ctx context.Context, namespace, configMapName string, w *ap.Workloads) (err error) {
 	log.Infof("Persist Workload version %d to assign to %v", w.Version, w.Workloads)
-	return e.storage.Set(ctx, w)
+	return e.storage.Set(ctx, namespace, configMapName, w)
 }
 
 func (e *executor) RestartWorker(ctx context.Context, namespace, name string) error {

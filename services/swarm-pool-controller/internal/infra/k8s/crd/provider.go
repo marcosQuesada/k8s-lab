@@ -75,7 +75,6 @@ func (p *Provider) Set(ctx context.Context, a *cfg.Workloads) error {
 		sw.Spec.Members = append(sw.Spec.Members, v1alpha1.Worker{
 			Name:      n,
 			Jobs:      p.adaptJobsToAlpha(s.Jobs),
-			State:     v1alpha1.Status{Phase: v1alpha1.PhaseRunning},
 			CreatedAt: time.Now().Unix(),
 		})
 	}

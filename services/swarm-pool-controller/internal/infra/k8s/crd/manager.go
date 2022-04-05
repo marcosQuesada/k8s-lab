@@ -40,7 +40,6 @@ func (m *manager) Create(ctx context.Context) error {
 								"spec": {
 									Type: "object",
 									Properties: map[string]v1.JSONSchemaProps{
-										"namespace":        {Type: "string"},
 										"statefulset-name": {Type: "string"},
 										"configmap-name":   {Type: "string"},
 										"version":          {Type: "integer"},
@@ -83,7 +82,7 @@ func (m *manager) Create(ctx context.Context) error {
 											Required: []string{"created_at"},
 										},
 									},
-									Required: []string{"namespace", "statefulset-name", "configmap-name", "workload"},
+									Required: []string{"statefulset-name", "configmap-name", "workload"},
 								},
 								"status": {
 									Type: "object",
@@ -97,11 +96,6 @@ func (m *manager) Create(ctx context.Context) error {
 						},
 					},
 					AdditionalPrinterColumns: []v1.CustomResourceColumnDefinition{
-						{
-							Name:     "Namespace",
-							Type:     "string",
-							JSONPath: ".spec.namespace",
-						},
 						{
 							Name:     "StatefulSet",
 							Type:     "string",

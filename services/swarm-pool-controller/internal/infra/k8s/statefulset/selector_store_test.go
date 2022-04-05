@@ -3,8 +3,6 @@ package statefulset
 import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"testing"
 )
 
@@ -12,10 +10,11 @@ func TestSelectorStore_ItRegistersNewSelectorOnStore(t *testing.T) {
 	sl := fakeSelector("app", "foo")
 	namespace := "default"
 	name := "foo-workers"
-	swarmName := "foo-swarm"
 
 	ss := NewSelectorStore().(*selectorStore)
-	ss.EnsureRegister(namespace, name, sl, swarmName)
+	if err := ss.Register(namespace, name, sl); err != nil {
+		t.Fatalf("unable to register, error %v", err)
+	}
 
 	if expected, got := 1, ss.len(); expected != got {
 		t.Fatalf("store size does not match, expected %d got %d", expected, got)
@@ -27,10 +26,11 @@ func TestSelectorStore_ItMarchesLabelFromRegisteredSelector(t *testing.T) {
 	sl := fakeSelector(key, value)
 	namespace := "default"
 	name := "foo-workers"
-	swarmName := "foo-swarm"
 
 	ss := NewSelectorStore().(*selectorStore)
-	ss.EnsureRegister(namespace, name, sl, swarmName)
+	if err := ss.Register(namespace, name, sl); err != nil {
+		t.Fatalf("unable to register, error %v", err)
+	}
 
 	p := getFakePod(namespace, "foo-worker", map[string]string{key: value})
 	if !ss.Matches(namespace, name, p.Labels) {
@@ -42,10 +42,11 @@ func TestSelectorStore_ItUnRegistersSelectorFromStore(t *testing.T) {
 	sl := fakeSelector("app", "foo")
 	namespace := "default"
 	name := "foo-workers"
-	swarmName := "foo-swarm"
 
 	ss := NewSelectorStore().(*selectorStore)
-	ss.EnsureRegister(namespace, name, sl, swarmName)
+	if err := ss.Register(namespace, name, sl); err != nil {
+		t.Fatalf("unable to register, error %v", err)
+	}
 
 	ss.UnRegister(namespace, name)
 	if expected, got := 0, ss.len(); expected != got {
@@ -53,11 +54,10 @@ func TestSelectorStore_ItUnRegistersSelectorFromStore(t *testing.T) {
 	}
 }
 
-func fakeSelector(key, value string) labels.Selector {
-	l, _ := labels.NewRequirement(key, selection.In, []string{value})
-	sl := labels.NewSelector()
-	sl.Add(*l)
-	return sl
+func fakeSelector(key, value string) *metav1.LabelSelector {
+	return &metav1.LabelSelector{
+		MatchLabels: map[string]string{key: value},
+	}
 }
 
 func getFakePod(namespace, name string, labels map[string]string) apiv1.Pod {

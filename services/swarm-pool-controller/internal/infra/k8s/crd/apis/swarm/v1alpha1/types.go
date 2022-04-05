@@ -32,15 +32,13 @@ type Worker struct {
 	Name      string `json:"name"`
 	Jobs      []Job  `json:"jobs"`
 	CreatedAt int64  `json:"created_at"`
-	State     Status `json:"state"`
 }
 
 // SwarmSpec defines the desired state of Swarm
 type SwarmSpec struct {
-	Namespace       string   `json:"namespace"`
+	Version         int64    `json:"version"`
 	StatefulSetName string   `json:"statefulset-name"`
 	ConfigMapName   string   `json:"configmap-name"`
-	Version         int64    `json:"version"`
 	Workload        []Job    `json:"workload"`
 	Size            int      `json:"size, omitempty"`
 	Members         []Worker `json:"members,omitempty"`

@@ -138,7 +138,6 @@ func (in *Worker) DeepCopyInto(out *Worker) {
 		*out = make([]Job, len(*in))
 		copy(*out, *in)
 	}
-	out.State = in.State
 	return
 }
 

@@ -59,7 +59,7 @@ func TestDiffCalculationOnStaticSet(t *testing.T) {
 	app := NewState(set, fakeWorkerName)
 	totalWorkers := 3
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
@@ -90,7 +90,7 @@ func TestDiffCalculationOnNounStaticSet(t *testing.T) {
 	app := NewState(set, fakeWorkerName)
 	totalWorkers := 2
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
@@ -117,7 +117,7 @@ func TestShardingByTotalWorkersOnASingleNodeComposition(t *testing.T) {
 	app := NewState(jobs, fakeWorkerName)
 	totalWorkers := 1
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestOnScalingUpWorkersOnceAssigned(t *testing.T) {
 	app := NewState(jobs, fakeWorkerName)
 	totalWorkers := 2
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 	a0, err := app.Workload(0)
@@ -158,7 +158,7 @@ func TestOnScalingUpWorkersOnceAssigned(t *testing.T) {
 
 	totalWorkers = 3
 	version = 2
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
@@ -182,13 +182,20 @@ func TestOnScalingDownWorkersOnceAssigned(t *testing.T) {
 	app := NewState(jobs, fakeWorkerName)
 	totalWorkers := 3
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+
+	wl, err := app.BalanceWorkload(totalWorkers, version)
+	if err != nil {
 		t.Fatalf("unable to balance keys %v", err)
+	}
+
+	if expected, got := 3, len(wl.Workloads); expected != got {
+		t.Errorf("workload assignation does not match, expected %d got %d", expected, got)
 	}
 
 	totalWorkers = 2
 	version = 2
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	_, err = app.BalanceWorkload(totalWorkers, version)
+	if err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
@@ -220,13 +227,13 @@ func TestOnScalingToZeroWorkersOnceAssigned(t *testing.T) {
 	app := NewState(jobs, fakeWorkerName)
 	totalWorkers := 3
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
 	totalWorkers = 0
 	version = 2
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
@@ -269,13 +276,13 @@ func TestScalingUpOnNounWorkloadSizeAssignsExpectedJobs(t *testing.T) {
 	app := NewState(realScenarioBug, fakeWorkerName)
 	totalWorkers := 2
 	var version int64 = 1
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 
 	totalWorkers = 12
 	version = 2
-	if err := app.BalanceWorkload(totalWorkers, version); err != nil {
+	if _, err := app.BalanceWorkload(totalWorkers, version); err != nil {
 		t.Fatalf("unable to balance keys %v", err)
 	}
 	a0, err := app.Workload(0)

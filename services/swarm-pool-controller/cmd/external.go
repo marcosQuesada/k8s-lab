@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
@@ -45,8 +46,7 @@ var externalCmd = &cobra.Command{
 		crdif.Start(ctx.Done())
 		sif.Start(ctx.Done())
 
-		// @TODO: Delegate
-		if !cache.WaitForNamedCacheSync("swarm", ctx.Done(), podi.HasSynced, swi.HasSynced, stsi.HasSynced) {
+		if !cache.WaitForNamedCacheSync(v1alpha1.CrdKind, ctx.Done(), podi.HasSynced, swi.HasSynced, stsi.HasSynced) {
 			log.Fatal("unable to sync pod informer")
 		}
 
@@ -54,48 +54,20 @@ var externalCmd = &cobra.Command{
 		stsl := sif.Apps().V1().StatefulSets().Lister()
 		podl := sif.Core().V1().Pods().Lister()
 
-		st := statefulset.NewSelectorStore()
+		cmp := configmap.NewProvider(clientSet)
+		ex := app.NewExecutor(cmp, nil) // @TODO: Refresher
+		appm := app.NewManager(ex, swl)
+		selSt := statefulset.NewSelectorStore()
+		ctl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, selSt, appm) // @TODO: Decompose
+		go ctl.Run(ctx)
 
-		// @TODO: Connect factory
-		ex := app.NewNopExecutor()
-		_ = app.NewManager(ex)
-
-		appCtl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, st)
-		go appCtl.Run(ctx)
-
-		crdh := crd.NewHandler(nil, appCtl)
+		crdh := crd.NewHandler(ctl)
 		swCtl := operator.New(crdh, swi, v1alpha1.CrdKind)
 		go swCtl.Run(ctx)
 
-		stsh := statefulset.NewHandler(appCtl)
+		stsh := statefulset.NewHandler(ctl, selSt)
 		stsCtl := operator.New(stsh, stsi, "StatefulSet")
 		go stsCtl.Run(ctx)
-
-		/*	cm := configmap.NewProvider(clientSet, namespace, workersConfigMapName, watchLabel)
-			podp := pod.NewProvider(cl)
-			swl := crd.NewProvider(swarmCl, namespace, watchLabel)
-			mex := crd.NewProviderMiddleware(cm, swl)
-			ex := app.NewExecutor(mex, podp)*/
-
-		//q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-		//informerFactory := crdinformers.NewSharedInformerFactory(swarmCl, 0)
-		//eh := operator.NewResourceEventHandler(q)
-		//informer := informerFactory.K8slab().V1alpha1().Swarms()
-		//informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		//	AddFunc:    eh.Add,
-		//	UpdateFunc: eh.Update,
-		//	DeleteFunc: eh.Delete,
-		//})
-		//
-		//wpf := k8s.NewWorkerPoolFactory(cl, ex)
-		//m := app.NewManager(wpf)
-		//h := crd.NewHandler(m)
-
-		//p := operator.NewEventProcessorWithCustomInformer(informer.Informer(), h)
-		//swarmCtl := operator.NewConsumer(p, q)
-		//
-		//stopCh := make(chan struct{})
-		//go swarmCtl.Run(stopCh)
 
 		router := mux.NewRouter()
 		srv := &http.Server{

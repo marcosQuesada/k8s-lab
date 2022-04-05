@@ -121,12 +121,12 @@ type fakeHandler struct {
 	totalDeleted int32
 }
 
-func (f *fakeHandler) Set(ctx context.Context, o runtime.Object) error {
+func (f *fakeHandler) Handle(ctx context.Context, o runtime.Object) error {
 	atomic.AddInt32(&f.totalCreated, 1)
 	return nil
 }
 
-func (f *fakeHandler) Remove(ctx context.Context, namespace, name string) error {
+func (f *fakeHandler) HandleDeletion(ctx context.Context, namespace, name string) error {
 	atomic.AddInt32(&f.totalDeleted, 1)
 	return nil
 }
