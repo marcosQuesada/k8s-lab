@@ -6,6 +6,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
@@ -40,6 +41,9 @@ func (c *manager) Create(ctx context.Context, cr *v1.CustomResourceDefinition) e
 
 func (c *manager) IsAccepted(ctx context.Context, resourceName string) (bool, error) {
 	cr, err := c.apiExtensionsClientSet.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, resourceName, metav1.GetOptions{})
+	if _, ok := err.(*apiErrors.StatusError); ok {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}

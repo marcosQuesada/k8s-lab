@@ -7,6 +7,7 @@ import (
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/configmap"
+	crdop "github.com/marcosQuesada/k8s-lab/pkg/operator/crd"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/app"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
@@ -35,6 +36,19 @@ var externalCmd = &cobra.Command{
 		defer cancel()
 		clientSet := operator.BuildExternalClient()
 		swarmClientSet := k8s.BuildSwarmExternalClient()
+		api := operator.BuildAPIExternalClient()
+
+		m := crdop.NewManager(api)
+		mng := crd.NewManager(m)
+		acc, err := mng.IsAccepted(context.Background())
+		if err != nil {
+			log.Fatalf("unable to check swarm crd status, error %v", err)
+		}
+		if !acc {
+			if err := mng.Create(context.Background()); err != nil {
+				log.Fatalf("unable to initialize swarm crd, error %v", err)
+			}
+		}
 
 		crdif := crdinformers.NewSharedInformerFactory(swarmClientSet, 0)
 		sif := informers.NewSharedInformerFactory(clientSet, 0)

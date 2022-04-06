@@ -2,6 +2,7 @@ package crd
 
 import (
 	"context"
+	"fmt"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,7 +40,7 @@ func (h *Handler) Handle(ctx context.Context, o runtime.Object) error {
 	err := h.controller.Process(ctx, sw.Namespace, sw.Name)
 	if err != nil {
 		log.Errorf("error processing swarm %s %s ", sw.Namespace, sw.Name)
-		return err
+		return fmt.Errorf("unable to process swarm %s %s error %v", sw.Namespace, sw.Name, err)
 	}
 
 	return nil

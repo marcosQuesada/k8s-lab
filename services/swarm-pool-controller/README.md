@@ -113,6 +113,7 @@ go test -v --race ./services/swarm-pool-controller/...
 ## Development Notes
 
 ### Pending
+- Initialize CRD
 - Swarm UpdateStatus
 - Pod restart as an option
 
