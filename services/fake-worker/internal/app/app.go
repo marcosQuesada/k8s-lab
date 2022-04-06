@@ -16,7 +16,7 @@ func NewApp() *App {
 }
 
 func (a *App) Assign(w *cfg.Workload) error {
-	log.Infof("App Workloads updated version %d Workloads %d", w.Version, len(w.Jobs))
+	log.Infof("App Workloads updated Workloads %d", len(w.Jobs))
 	if a.state == nil {
 		a.state = w
 		return nil
@@ -27,7 +27,7 @@ func (a *App) Assign(w *cfg.Workload) error {
 		return nil
 	}
 
-	log.Infof("Workload State Updated version %d includes %v excludes %v", w.Version, i, e)
+	log.Infof("Workload State Updated includes %v excludes %v", i, e)
 	return nil
 }
 

@@ -37,8 +37,7 @@ func (a *VersionChecker) versionHandler(w http.ResponseWriter, r *http.Request) 
 		jobs = a.accessor.Workload().Jobs
 	}
 	wrk := &config.Workload{
-		Jobs:    jobs,
-		Version: a.accessor.Version(),
+		Jobs: jobs,
 	}
 	if err := json.NewEncoder(w).Encode(wrk); err != nil {
 		log.Errorf("Unexpected error Marshalling version, error %v", err)
