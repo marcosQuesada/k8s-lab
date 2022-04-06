@@ -21,7 +21,7 @@ func (a *App) Assign(w *cfg.Workload) error {
 		a.state = w
 		return nil
 	}
-
+	
 	i, e := a.state.Difference(w)
 	if len(i) == 0 && len(e) == 0 {
 		return nil

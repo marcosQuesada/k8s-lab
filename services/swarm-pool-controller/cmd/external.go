@@ -72,15 +72,15 @@ var externalCmd = &cobra.Command{
 		ex := app.NewExecutor(cmp, nil) // @TODO: Refresher
 		appm := app.NewManager(ex, swl)
 		selSt := statefulset.NewSelectorStore()
-		ctl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, selSt, appm) // @TODO: Decompose
+		ctl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, selSt, appm, operator.NewRunner()) // @TODO: Decompose
 		go ctl.Run(ctx)
 
 		crdh := crd.NewHandler(ctl)
-		swCtl := operator.New(crdh, swi, v1alpha1.CrdKind)
+		swCtl := operator.New(crdh, swi, operator.NewRunner(), v1alpha1.CrdKind)
 		go swCtl.Run(ctx)
 
 		stsh := statefulset.NewHandler(ctl, selSt)
-		stsCtl := operator.New(stsh, stsi, "StatefulSet")
+		stsCtl := operator.New(stsh, stsi, operator.NewRunner(), "StatefulSet")
 		go stsCtl.Run(ctx)
 
 		router := mux.NewRouter()

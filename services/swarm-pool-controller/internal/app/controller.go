@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
 	swapi "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/clientset/versioned"
@@ -12,12 +13,8 @@ import (
 	api "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	appv1 "k8s.io/client-go/listers/apps/v1"
 	v1 "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/util/workqueue"
-	"time"
 )
 
 const maxRetries = 5
@@ -30,89 +27,51 @@ type Manager interface {
 
 // swarmController linearize incoming commands, concurrent processing wouldn't make sense
 type swarmController struct {
-	queue             workqueue.RateLimitingInterface
 	swarmClient       versioned.Interface
 	swarmLister       v1alpha1.SwarmLister
 	statefulSetLister appv1.StatefulSetLister
 	podLister         v1.PodLister
 	selectorStore     statefulset.SelectorStore
 	manager           Manager
+	runner            operator.Runner
 }
 
-func NewSwarmController(cl versioned.Interface, swl v1alpha1.SwarmLister, stsl appv1.StatefulSetLister, pl v1.PodLister, ss statefulset.SelectorStore, m Manager) *swarmController {
-	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+func NewSwarmController(cl versioned.Interface, swl v1alpha1.SwarmLister, stsl appv1.StatefulSetLister, pl v1.PodLister, ss statefulset.SelectorStore, m Manager, r operator.Runner) *swarmController {
 	return &swarmController{
-		queue:             queue,
 		swarmClient:       cl,
 		swarmLister:       swl,
 		statefulSetLister: stsl,
 		podLister:         pl,
 		selectorStore:     ss,
 		manager:           m,
+		runner:            r,
 	}
 }
 
 // Process swarm entry happens on swarm creation or update
 func (c *swarmController) Process(ctx context.Context, namespace, name string) error {
-	c.queue.Add(newProcessEvent(namespace, name))
+	c.runner.Process(newProcessEvent(namespace, name))
 	return nil
 }
 
 // UpdatePoolSize happens on statefulSet size variation
 func (c *swarmController) UpdatePoolSize(ctx context.Context, namespace, name string, size int) error {
-	c.queue.Add(newUpdateEvent(namespace, name, size))
+	c.runner.Process(newUpdateEvent(namespace, name, size))
 	return nil
 }
 
 // Delete happens on swarm deletion
 func (c *swarmController) Delete(ctx context.Context, namespace, name string) error {
-	c.queue.Add(newDeleteEvent(namespace, name))
+	c.runner.Process(newDeleteEvent(namespace, name))
 	return nil
 }
 
 func (c *swarmController) Run(ctx context.Context) {
-	defer c.queue.ShutDown()
-
-	wait.UntilWithContext(ctx, c.worker, time.Second)
+	c.runner.Run(ctx, c.handle)
 }
 
-func (c *swarmController) worker(ctx context.Context) {
-	for c.processNextItem(ctx) {
-	}
-}
-
-func (c *swarmController) processNextItem(ctx context.Context) bool {
-	e, quit := c.queue.Get()
-	if quit {
-		log.Error("Queue goes down!")
-		return false
-	}
-	defer c.queue.Done(e)
-
+func (c *swarmController) handle(ctx context.Context, e interface{}) error {
 	ev := e.(Event)
-	ctx, cancel := context.WithTimeout(ctx, time.Second)
-	defer cancel()
-
-	err := c.handle(ctx, ev)
-	if err == nil {
-		c.queue.Forget(e)
-		return true
-	}
-
-	if c.queue.NumRequeues(e) < maxRetries {
-		log.Errorf("Error processing ev %s, retry. Error: %v", ev, err)
-		c.queue.AddRateLimited(e)
-		return true
-	}
-
-	log.Errorf("Error processing %s Max retries achieved: %v", ev, err)
-	c.queue.Forget(e)
-	utilruntime.HandleError(err)
-
-	return true
-}
-
-func (c *swarmController) handle(ctx context.Context, ev Event) error {
 	switch e := ev.(type) {
 	case processEvent:
 		return c.process(ctx, e.namespace, e.name)

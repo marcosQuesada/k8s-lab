@@ -33,7 +33,7 @@ func (h *Handler) Handle(ctx context.Context, o runtime.Object) error {
 	sw := o.(*v1alpha1.Swarm)
 	log.Infof("Handle Swarm Namespace %s name %s StatefulSet Name %s size %d status %s", sw.Namespace, sw.Name, sw.Spec.StatefulSetName, sw.Spec.Size, sw.Status)
 
-	if !h.hasLastSwarmVariation(sw) {
+	if !h.lastSwarmHasVariation(sw) {
 		return nil
 	}
 
@@ -55,7 +55,7 @@ func (h *Handler) HandleDeletion(ctx context.Context, namespace, name string) er
 	return nil
 }
 
-func (h *Handler) hasLastSwarmVariation(ss *v1alpha1.Swarm) bool {
+func (h *Handler) lastSwarmHasVariation(ss *v1alpha1.Swarm) bool {
 	k := ss.Namespace + "/" + ss.Name
 	h.mutex.Lock()
 
