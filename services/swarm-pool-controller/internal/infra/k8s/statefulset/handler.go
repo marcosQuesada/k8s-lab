@@ -46,7 +46,7 @@ func (h *Handler) Handle(ctx context.Context, o runtime.Object) error {
 	return h.controller.UpdatePoolSize(ctx, ss.Namespace, ss.Name, int(*ss.Spec.Replicas))
 }
 
-func (h *Handler) HandleDeletion(ctx context.Context, namespace, name string) error {
+func (h *Handler) Delete(ctx context.Context, namespace, name string) error {
 	log.Infof("Deleted StatefulSet Namespace %s name %s", namespace, name)
 	if !h.selector.IsRegistered(namespace, name) {
 		log.Infof("Skipped sts delete event on namespace %s name %s", namespace, name)

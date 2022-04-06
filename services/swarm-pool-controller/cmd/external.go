@@ -39,15 +39,8 @@ var externalCmd = &cobra.Command{
 		api := operator.BuildAPIExternalClient()
 
 		m := crdop.NewManager(api)
-		mng := crd.NewManager(m)
-		acc, err := mng.IsAccepted(context.Background())
-		if err != nil {
+		if err := crd.NewManager(m).EnsureCRDRegistered(); err != nil {
 			log.Fatalf("unable to check swarm crd status, error %v", err)
-		}
-		if !acc {
-			if err := mng.Create(context.Background()); err != nil {
-				log.Fatalf("unable to initialize swarm crd, error %v", err)
-			}
 		}
 
 		crdif := crdinformers.NewSharedInformerFactory(swarmClientSet, 0)
@@ -69,7 +62,7 @@ var externalCmd = &cobra.Command{
 		podl := sif.Core().V1().Pods().Lister()
 
 		cmp := configmap.NewProvider(clientSet)
-		ex := app.NewExecutor(cmp, nil) // @TODO: Refresher
+		ex := app.NewExecutor(cmp, nil) // @TODO: Add Refresher Option
 		appm := app.NewManager(ex, swl)
 		selSt := statefulset.NewSelectorStore()
 		pr := app.NewProvider(swl, stsl, podl)

@@ -46,8 +46,8 @@ func (h *Handler) Handle(ctx context.Context, o runtime.Object) error {
 	return nil
 }
 
-func (h *Handler) HandleDeletion(ctx context.Context, namespace, name string) error {
-	log.Infof("HandleDeletion Swarm Namespace %s name %s", namespace, name)
+func (h *Handler) Delete(ctx context.Context, namespace, name string) error {
+	log.Infof("Delete Swarm Namespace %s name %s", namespace, name)
 
 	_ = h.controller.Delete(ctx, namespace, name)
 	// @TODO:  check errors out

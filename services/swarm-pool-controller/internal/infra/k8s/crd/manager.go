@@ -2,6 +2,7 @@ package crd
 
 import (
 	"context"
+	"fmt"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator/crd"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -144,4 +145,20 @@ func (m *manager) Create(ctx context.Context) error {
 
 func (m *manager) IsAccepted(ctx context.Context) (bool, error) {
 	return m.initializer.IsAccepted(ctx, v1alpha1.Name)
+}
+
+func (m *manager) EnsureCRDRegistered() error {
+	acc, err := m.IsAccepted(context.Background())
+	if err != nil {
+		return fmt.Errorf("unable to check swarm crd status, error %v", err)
+	}
+	if acc {
+		return nil
+	}
+
+	if err := m.Create(context.Background()); err != nil {
+		return fmt.Errorf("unable to initialize swarm crd, error %v", err)
+	}
+
+	return nil
 }

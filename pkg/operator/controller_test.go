@@ -126,7 +126,7 @@ func (f *fakeHandler) Handle(ctx context.Context, o runtime.Object) error {
 	return nil
 }
 
-func (f *fakeHandler) HandleDeletion(ctx context.Context, namespace, name string) error {
+func (f *fakeHandler) Delete(ctx context.Context, namespace, name string) error {
 	atomic.AddInt32(&f.totalDeleted, 1)
 	return nil
 }

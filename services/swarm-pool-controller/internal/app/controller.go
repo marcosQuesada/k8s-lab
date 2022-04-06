@@ -46,19 +46,19 @@ func NewSwarmController(cl versioned.Interface, ss statefulset.SelectorStore, m 
 
 // Process swarm entry happens on swarm creation or update
 func (c *swarmController) Process(ctx context.Context, namespace, name string) error {
-	c.runner.Process(newProcessEvent(namespace, name))
+	c.runner.Process(newProcessSwarm(namespace, name))
 	return nil
 }
 
 // UpdatePoolSize happens on statefulSet size variation
 func (c *swarmController) UpdatePoolSize(ctx context.Context, namespace, name string, size int) error {
-	c.runner.Process(newUpdateEvent(namespace, name, size))
+	c.runner.Process(newUpdateSwarmSize(namespace, name, size))
 	return nil
 }
 
 // Delete happens on swarm deletion
 func (c *swarmController) Delete(ctx context.Context, namespace, name string) error {
-	c.runner.Process(newDeleteEvent(namespace, name))
+	c.runner.Process(newDeleteSwarm(namespace, name))
 	return nil
 }
 
@@ -69,11 +69,11 @@ func (c *swarmController) Run(ctx context.Context) {
 func (c *swarmController) handle(ctx context.Context, e interface{}) error {
 	ev := e.(Event)
 	switch e := ev.(type) {
-	case processEvent:
+	case processSwarm:
 		return c.process(ctx, e.namespace, e.name)
-	case updateEvent:
+	case updateSwarmSize:
 		return c.updatePool(ctx, e.namespace, e.name, e.size)
-	case deleteEvent:
+	case deleteSwarm:
 		return c.delete(ctx, e.namespace, e.name)
 	}
 

@@ -13,8 +13,8 @@ import (
 )
 
 type Handler interface {
-	Handle(ctx context.Context, o runtime.Object) error
-	HandleDeletion(ctx context.Context, namespace, name string) error
+	Handle(ctx context.Context, o runtime.Object) error // @TODO: Split into Create/Update to remove handler caches
+	Delete(ctx context.Context, namespace, name string) error
 }
 
 type Controller struct {
@@ -79,7 +79,7 @@ func (c *Controller) handle(ctx context.Context, k interface{}) error {
 			return fmt.Errorf("unable to split  object with key %s from store: %v", key, err)
 		}
 		log.Infof("handling deletion on key %s", key)
-		return c.eventHandler.HandleDeletion(ctx, namespace, name)
+		return c.eventHandler.Delete(ctx, namespace, name)
 	}
 
 	o, ok := obj.(runtime.Object)
