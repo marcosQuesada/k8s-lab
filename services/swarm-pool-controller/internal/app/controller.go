@@ -4,20 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator/pod"
 	swapi "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/clientset/versioned"
-	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/listers/swarm/v1alpha1"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
 	log "github.com/sirupsen/logrus"
 	api "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	appv1 "k8s.io/client-go/listers/apps/v1"
-	v1 "k8s.io/client-go/listers/core/v1"
 )
-
-const maxRetries = 5
 
 type Manager interface {
 	Process(ctx context.Context, namespace, name string, version int64, workloads []swapi.Job)
@@ -25,26 +18,29 @@ type Manager interface {
 	Delete(ctx context.Context, namespace, name string)
 }
 
-// swarmController linearize incoming commands, concurrent processing wouldn't make sense
-type swarmController struct {
-	swarmClient       versioned.Interface
-	swarmLister       v1alpha1.SwarmLister
-	statefulSetLister appv1.StatefulSetLister
-	podLister         v1.PodLister
-	selectorStore     statefulset.SelectorStore
-	manager           Manager
-	runner            operator.Runner
+type Provider interface {
+	Swarm(namespace, name string) (*swapi.Swarm, error)
+	StatefulSet(namespace, name string) (*api.StatefulSet, error)
+	PodNamesFromSelector(namespace string, ls *metav1.LabelSelector) ([]string, error)
+	SwarmNameFromStatefulSetName(namespace, name string) (string, error)
 }
 
-func NewSwarmController(cl versioned.Interface, swl v1alpha1.SwarmLister, stsl appv1.StatefulSetLister, pl v1.PodLister, ss statefulset.SelectorStore, m Manager, r operator.Runner) *swarmController {
+// swarmController linearize incoming commands, concurrent processing wouldn't make sense
+type swarmController struct {
+	swarmClient   versioned.Interface
+	selectorStore statefulset.SelectorStore
+	manager       Manager
+	provider      Provider
+	runner        operator.Runner
+}
+
+func NewSwarmController(cl versioned.Interface, ss statefulset.SelectorStore, m Manager, p Provider, r operator.Runner) *swarmController {
 	return &swarmController{
-		swarmClient:       cl,
-		swarmLister:       swl,
-		statefulSetLister: stsl,
-		podLister:         pl,
-		selectorStore:     ss,
-		manager:           m,
-		runner:            r,
+		swarmClient:   cl,
+		selectorStore: ss,
+		manager:       m,
+		provider:      p,
+		runner:        r,
 	}
 }
 
@@ -87,15 +83,15 @@ func (c *swarmController) handle(ctx context.Context, e interface{}) error {
 // process happens on swarm create/update event
 func (c *swarmController) process(ctx context.Context, namespace, name string) error {
 	log.Infof("Process swarm %s %s", namespace, name)
-	sw, err := c.swarmLister.Swarms(namespace).Get(name)
+	sw, err := c.provider.Swarm(namespace, name)
 	if err != nil {
-		return fmt.Errorf("unable to get swarm namespace %s name %s", namespace, name)
+		return err
 	}
 
 	log.Infof("Processing swarm %s namespace %s statefulset name %s configmap name %s version %d total workloads %d",
 		sw.Name, sw.Namespace, sw.Spec.StatefulSetName, sw.Spec.ConfigMapName, sw.Spec.Version, len(sw.Spec.Workload))
 
-	sts, err := c.statefulSetLister.StatefulSets(sw.Namespace).Get(sw.Spec.StatefulSetName)
+	sts, err := c.provider.StatefulSet(sw.Namespace, sw.Spec.StatefulSetName)
 	if err != nil {
 		return fmt.Errorf("unable to get statefulset from swarm %s on namespace %s error %v", name, namespace, err)
 	}
@@ -105,7 +101,7 @@ func (c *swarmController) process(ctx context.Context, namespace, name string) e
 		return fmt.Errorf("unable to register key %s %s error %v", namespace, sts.Name, err)
 	}
 
-	names, err := c.podNamesFromSelector(namespace, sts.Spec.Selector)
+	names, err := c.provider.PodNamesFromSelector(namespace, sts.Spec.Selector)
 	if err != nil {
 		return fmt.Errorf("unable to get pods from selector, error %v", err)
 	}
@@ -120,7 +116,7 @@ func (c *swarmController) process(ctx context.Context, namespace, name string) e
 func (c *swarmController) updatePool(ctx context.Context, namespace, name string, size int) error {
 	log.Infof("Update swarm %s %s", namespace, name)
 
-	swarmName, err := c.swarmNameFromStatefulSetName(namespace, name)
+	swarmName, err := c.provider.SwarmNameFromStatefulSetName(namespace, name)
 	if err != nil {
 		return fmt.Errorf("unable to get swarm error %v", err)
 	}
@@ -144,7 +140,7 @@ func (c *swarmController) delete(ctx context.Context, namespace, name string) er
 }
 
 func (c *swarmController) updateSwarm(ctx context.Context, namespace, name string, version int64, size int) (*swapi.Swarm, error) {
-	sw, err := c.swarmLister.Swarms(namespace).Get(name)
+	sw, err := c.provider.Swarm(namespace, name)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get swarm namespace %s name %s", namespace, name)
 	}
@@ -162,57 +158,4 @@ func (c *swarmController) updateSwarm(ctx context.Context, namespace, name strin
 	}
 
 	return swu, nil
-}
-
-func (c *swarmController) podNamesFromSelector(namespace string, ls *metav1.LabelSelector) ([]string, error) {
-	selector, err := metav1.LabelSelectorAsSelector(ls)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get label selector, error %v", err)
-	}
-
-	pods, err := c.podLister.Pods(namespace).List(selector)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get pods from selector, error %v", err)
-	}
-
-	var names []string
-	for _, pd := range pods {
-		if pod.IsTerminated(pd) || pod.HasDeletionTimestamp(pd) {
-			continue
-		}
-		names = append(names, pd.Name)
-	}
-
-	return names, nil
-}
-
-func (c *swarmController) statefulSetFromSwarmName(namespace, name string) (*api.StatefulSet, error) {
-	sw, err := c.swarmLister.Swarms(namespace).Get(name)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get swarm namespace %s name %s", namespace, name)
-	}
-
-	log.Infof("Processing swarm %s namespace %s statefulset name %s configmap name %s version %d workloads %v",
-		sw.Name, sw.Namespace, sw.Spec.StatefulSetName, sw.Spec.ConfigMapName, sw.Spec.Version, sw.Spec.Workload)
-
-	sts, err := c.statefulSetLister.StatefulSets(sw.Namespace).Get(sw.Spec.StatefulSetName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get statefulset from swarm %s on namespace %s name %s error %v", sw.Name, sw.Namespace, sw.Spec.StatefulSetName, err)
-	}
-	return sts, nil
-}
-
-func (c *swarmController) swarmNameFromStatefulSetName(namespace, name string) (string, error) {
-	sws, err := c.swarmLister.Swarms(namespace).List(labels.NewSelector())
-	if err != nil {
-		return "", fmt.Errorf("unable to list swarm namespace %s name %s", namespace, name)
-	}
-
-	for _, sw := range sws {
-		if sw.Spec.StatefulSetName == name {
-			return sw.Name, nil
-		}
-	}
-
-	return "", fmt.Errorf("unable to find swarm name from statefulset %s", name)
 }

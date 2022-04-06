@@ -72,7 +72,8 @@ var externalCmd = &cobra.Command{
 		ex := app.NewExecutor(cmp, nil) // @TODO: Refresher
 		appm := app.NewManager(ex, swl)
 		selSt := statefulset.NewSelectorStore()
-		ctl := app.NewSwarmController(swarmClientSet, swl, stsl, podl, selSt, appm, operator.NewRunner()) // @TODO: Decompose
+		pr := app.NewProvider(swl, stsl, podl)
+		ctl := app.NewSwarmController(swarmClientSet, selSt, appm, pr, operator.NewRunner())
 		go ctl.Run(ctx)
 
 		crdh := crd.NewHandler(ctl)
