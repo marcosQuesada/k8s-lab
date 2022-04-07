@@ -52,7 +52,7 @@ func (c *swarmController) Create(ctx context.Context, namespace, name string) er
 
 // Update swarm entry happens on swarm update
 func (c *swarmController) Update(ctx context.Context, namespace, name string) error {
-	c.runner.Process(newProcessSwarm(namespace, name))
+	c.runner.Process(newProcessSwarm(namespace, name)) // @TODO: Improve this!
 	return nil
 }
 
