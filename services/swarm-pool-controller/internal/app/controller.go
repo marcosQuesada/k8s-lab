@@ -44,8 +44,14 @@ func NewSwarmController(cl versioned.Interface, ss statefulset.SelectorStore, m 
 	}
 }
 
-// Process swarm entry happens on swarm creation or update
-func (c *swarmController) Process(ctx context.Context, namespace, name string) error {
+// Create swarm entry happens on swarm creation
+func (c *swarmController) Create(ctx context.Context, namespace, name string) error {
+	c.runner.Process(newProcessSwarm(namespace, name))
+	return nil
+}
+
+// Update swarm entry happens on swarm update
+func (c *swarmController) Update(ctx context.Context, namespace, name string) error {
 	c.runner.Process(newProcessSwarm(namespace, name))
 	return nil
 }
@@ -82,7 +88,7 @@ func (c *swarmController) handle(ctx context.Context, e interface{}) error {
 
 // process happens on swarm create/update event
 func (c *swarmController) process(ctx context.Context, namespace, name string) error {
-	log.Infof("Process swarm %s %s", namespace, name)
+	log.Infof("Create swarm %s %s", namespace, name)
 	sw, err := c.provider.Swarm(namespace, name)
 	if err != nil {
 		return err

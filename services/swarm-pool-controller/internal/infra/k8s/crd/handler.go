@@ -10,110 +10,81 @@ import (
 )
 
 type controller interface {
-	Process(ctx context.Context, namespace, name string) error
+	Create(ctx context.Context, namespace, name string) error
+	Update(ctx context.Context, namespace, name string) error
 	Delete(ctx context.Context, namespace, name string) error
 }
 
 // Handler handles swarm state updates
 type Handler struct {
-	controller     controller
-	swarmLastIndex map[string]*swarmLastState
-	mutex          sync.RWMutex
+	controller controller
+	mutex      sync.RWMutex
 }
 
 // NewHandler instantiates swarm handler
 func NewHandler(c controller) *Handler {
 	return &Handler{
-		controller:     c,
-		swarmLastIndex: map[string]*swarmLastState{},
+		controller: c,
 	}
 }
 
-func (h *Handler) Handle(ctx context.Context, o runtime.Object) error {
+func (h *Handler) Create(ctx context.Context, o runtime.Object) error {
 	sw := o.(*v1alpha1.Swarm)
-	log.Infof("Handle Swarm Namespace %s name %s StatefulSet Name %s size %d status %s", sw.Namespace, sw.Name, sw.Spec.StatefulSetName, sw.Spec.Size, sw.Status)
+	log.Infof("Create Swarm Namespace %s name %s StatefulSet Name %s size %d status %s", sw.Namespace, sw.Name, sw.Spec.StatefulSetName, sw.Spec.Size, sw.Status)
 
-	if !h.lastSwarmHasVariation(sw) {
-		return nil
-	}
-
-	err := h.controller.Process(ctx, sw.Namespace, sw.Name)
-	if err != nil {
-		log.Errorf("error processing swarm %s %s ", sw.Namespace, sw.Name)
+	if err := h.controller.Create(ctx, sw.Namespace, sw.Name); err != nil {
 		return fmt.Errorf("unable to process swarm %s %s error %v", sw.Namespace, sw.Name, err)
 	}
 
 	return nil
 }
 
-func (h *Handler) Delete(ctx context.Context, namespace, name string) error {
-	log.Infof("Delete Swarm Namespace %s name %s", namespace, name)
+func (h *Handler) Update(ctx context.Context, o, n runtime.Object) error {
+	osw := o.(*v1alpha1.Swarm)
+	nsw := n.(*v1alpha1.Swarm)
+	log.Infof("Create Swarm Namespace %s name %s StatefulSet Name %s size %d status %s", osw.Namespace, osw.Name, osw.Spec.StatefulSetName, osw.Spec.Size, osw.Status)
 
-	_ = h.controller.Delete(ctx, namespace, name)
-	// @TODO:  check errors out
-	h.cleanLastSwarm(namespace, name)
+	if Equals(osw, nsw) {
+		return nil
+	}
+
+	if err := h.controller.Update(ctx, nsw.Namespace, nsw.Name); err != nil {
+		return fmt.Errorf("unable to update swarm %s %s error %v", nsw.Namespace, nsw.Name, err)
+	}
+
 	return nil
 }
 
-func (h *Handler) lastSwarmHasVariation(ss *v1alpha1.Swarm) bool {
-	k := ss.Namespace + "/" + ss.Name
-	h.mutex.Lock()
+func (h *Handler) Delete(ctx context.Context, o runtime.Object) error {
+	sw := o.(*v1alpha1.Swarm)
+	log.Infof("Delete Swarm Namespace %s name %s", sw.Namespace, sw.Name)
 
-	defer func() {
-		h.swarmLastIndex[k] = &swarmLastState{
-			version:         ss.Spec.Version,
-			statefulSetName: ss.Spec.StatefulSetName,
-			configMapName:   ss.Spec.ConfigMapName,
-			workload:        ss.Spec.Workload,
-		}
-		h.mutex.Unlock()
-	}()
-
-	v, ok := h.swarmLastIndex[k]
-	if !ok {
-		return true
+	if err := h.controller.Delete(ctx, sw.Namespace, sw.Name); err != nil {
+		return fmt.Errorf("unable to delete swarm %s %s error %v", sw.Namespace, sw.Name, err)
 	}
 
-	return v.Equals(ss.Spec.Version, ss.Spec.StatefulSetName, ss.Spec.ConfigMapName, ss.Spec.Workload)
+	return nil
 }
 
-func (h *Handler) cleanLastSwarm(namespace, name string) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
-
-	delete(h.swarmLastIndex, namespace+"/"+name)
-}
-
-type swarmLastState struct {
-	version         int64
-	statefulSetName string
-	configMapName   string
-	workload        []v1alpha1.Job
-}
-
-func (s *swarmLastState) Equals(v int64, stsName, cmName string, wk []v1alpha1.Job) bool {
-	if s.version != v {
+func Equals(o, n *v1alpha1.Swarm) bool {
+	if o.Spec.StatefulSetName != n.Spec.StatefulSetName {
 		return false
 	}
 
-	if s.statefulSetName != stsName {
+	if o.Spec.ConfigMapName != n.Spec.ConfigMapName {
 		return false
 	}
 
-	if s.configMapName != cmName {
-		return false
-	}
-
-	if len(s.workload) != len(wk) {
+	if len(o.Spec.Workload) != len(n.Spec.Workload) {
 		return false
 	}
 
 	jobs := map[v1alpha1.Job]struct{}{}
-	for _, job := range s.workload {
+	for _, job := range o.Spec.Workload {
 		jobs[job] = struct{}{}
 	}
 
-	for _, job := range wk {
+	for _, job := range n.Spec.Workload {
 		if _, ok := jobs[job]; !ok {
 			return false
 		}

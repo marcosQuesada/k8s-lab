@@ -3,18 +3,16 @@ package operator
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
-	"strings"
-	"unicode"
 )
 
 type Handler interface {
-	Handle(ctx context.Context, o runtime.Object) error // @TODO: Split into Create/Update to remove handler caches
-	Delete(ctx context.Context, namespace, name string) error
+	Create(ctx context.Context, o runtime.Object) error
+	Update(ctx context.Context, o, n runtime.Object) error
+	Delete(ctx context.Context, o runtime.Object) error
 }
 
 type Controller struct {
@@ -32,25 +30,33 @@ func New(eventHandler Handler, informer cache.SharedIndexInformer, runner Runner
 		resourceType: resourceType,
 	}
 
+	eh := NewResourceEventHandler()
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			ctl.enqueue(obj)
+			o, err := eh.Create(obj)
+			if err != nil {
+				log.Errorf("unable to create, error %v", err)
+				return
+			}
+			ctl.runner.Process(o)
 		},
 		UpdateFunc: func(old, new interface{}) {
-			// @TODO: Should be recover event struct ?
-			diff := cmp.Diff(old, new)
-			cleanDiff := strings.TrimFunc(diff, func(r rune) bool {
-				return !unicode.IsGraphic(r)
-			})
-			fmt.Printf("UPDATE %s diff: %s \n", resourceType, cleanDiff)
-
-			ctl.enqueue(new)
+			o, err := eh.Update(old, new)
+			if err != nil {
+				log.Errorf("unable to update, error %v", err)
+				return
+			}
+			ctl.runner.Process(o)
 		},
 		DeleteFunc: func(obj interface{}) {
-			ctl.enqueue(obj)
+			o, err := eh.Delete(obj)
+			if err != nil {
+				log.Errorf("unable to delete, error %v", err)
+				return
+			}
+			ctl.runner.Process(o)
 		},
 	})
-
 	return ctl
 }
 
@@ -67,36 +73,36 @@ func (c *Controller) Run(ctx context.Context) {
 }
 
 func (c *Controller) handle(ctx context.Context, k interface{}) error {
-	key := k.(string)
-	obj, exists, err := c.informer.GetIndexer().GetByKey(key)
+	e, ok := k.(Event)
+	if !ok {
+		return fmt.Errorf("unexpected object type on handler, expected event got %T", k)
+	}
+	_, exists, err := c.informer.GetIndexer().GetByKey(e.GetKey())
 	if err != nil {
-		return fmt.Errorf("unable to fetching object with key %s from store: %v", key, err)
+		return fmt.Errorf("unable to fetching object with key %s from store: %v", e.GetKey(), err)
 	}
 
 	if !exists {
-		namespace, name, err := cache.SplitMetaNamespaceKey(key)
-		if err != nil {
-			return fmt.Errorf("unable to split  object with key %s from store: %v", key, err)
+		log.Infof("handling deletion on key %s", e.GetKey())
+		if ev, ok := e.(*event); ok {
+			return c.eventHandler.Delete(ctx, ev.obj)
 		}
-		log.Infof("handling deletion on key %s", key)
-		return c.eventHandler.Delete(ctx, namespace, name)
+		if ev, ok := e.(*updateEvent); ok {
+			return c.eventHandler.Delete(ctx, ev.old)
+		}
+		return nil
 	}
 
-	o, ok := obj.(runtime.Object)
-	if !ok {
-		return fmt.Errorf("unexpected object type on handler, expected runtime object got %T", obj)
+	switch ev := e.(type) {
+	case *event:
+		if e.GetAction() == Create {
+			return c.eventHandler.Create(ctx, ev.obj)
+		}
+		return c.eventHandler.Delete(ctx, ev.obj)
+	case *updateEvent:
+		return c.eventHandler.Update(ctx, ev.old, ev.new)
+
 	}
 
-	return c.eventHandler.Handle(ctx, o)
-}
-
-func (c *Controller) enqueue(obj interface{}) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-	if err != nil {
-		log.Errorf("Unable to Update event from object %T error %v", obj, err)
-		utilruntime.HandleError(err)
-		return
-	}
-	log.Debugf("enqueue %T: %s", obj, key)
-	c.runner.Process(key)
+	return fmt.Errorf("unexpected object type on handler, expected Event got %T", e)
 }
