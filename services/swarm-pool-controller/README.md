@@ -8,7 +8,7 @@ As example, dedicated streams as real time video, long run jobs (database backup
 
 ## Controller flow
 
-- Controller watches Swarm CRDs that defines Statefulset/Pod watched labels
+- Controller watches Swarm CRDs that defines workload pool to share and Statefulset/Pod watched labels
 - Watched pools create an ordered pool, detects pool completion once Statefulset size matches pool size
 - On Pool size change balances workload jobs between workers through a concrete configmap
 
@@ -26,6 +26,51 @@ NAME                                READY   STATUS    RESTARTS   AGE
 swarm-controller-7bcc789689-sj628   1/1     Running   0          10h
 swarm-worker-0                      1/1     Running   0          10h
 swarm-worker-1                      1/1     Running   0          10h
+
+```
+Apply crd-example to create swarm exampke:
+```
+kubectl get swarms
+NAME           STATEFULSET    CONFIGMAP             VERSION   SIZE   AGE  
+swarm-config   swarm-worker   swarm-worker-config   35        2      22h   
+```
+Defined swarm workload detail:
+```
+kubectl describe swarm swarm-config
+...
+Spec:
+  Configmap - Name:    swarm-worker-config
+  Size:                2
+  Statefulset - Name:  swarm-worker
+  Version:             35
+  Workload:
+    stream:xxrtve1
+    stream:xxrtve2
+    stream:zrtve2:new
+    stream:zrtve1:new
+    stream:zrtve0:new
+    stream:cctv0:updated
+    stream:history:new
+    stream:foo:new
+    stream:xxctv3:new
+    stream:cctv3:updated
+    stream:xxctv0:updated
+    stream:xxctv10:updated
+    stream:xxctv11:updated
+    stream:xxctv12:updated
+    stream:xxctv13:updated
+    stream:xxctv14:updated
+    stream:yxctv1:updated
+    stream:yxctv2:updated
+    stream:yxctv3:updated
+    stream:xabcn0:updated
+    stream:xacb01:updated
+    stream:xacb02:updated
+    stream:xacb03:updated
+    stream:xacb04:updated
+    stream:sportnews0:updated
+    stream:cars:new
+Events:  <none>
 
 ```
 Check worker assignations from worker config:

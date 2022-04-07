@@ -4,12 +4,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	cfg "github.com/marcosQuesada/k8s-lab/pkg/config"
-	"github.com/marcosQuesada/k8s-lab/pkg/operator"
-	"github.com/marcosQuesada/k8s-lab/services/configmap-claim-owner-controller/internal/infra/k8s"
-	crdinformers "github.com/marcosQuesada/k8s-lab/services/configmap-claim-owner-controller/internal/infra/k8s/crd/generated/informers/externalversions"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/util/workqueue"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,19 +22,19 @@ var internalCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Infof("%s internal running Version %s release date %s http server on port %s", appID, cfg.Commit, cfg.Date, cfg.HttpPort)
 
-		q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
-		crdClient := k8s.BuildConfigMapClaimOwnerInternalClient()
-		informerFactory := crdinformers.NewSharedInformerFactory(crdClient, 0) // @TODO: time.Minute*1)
-		eh := operator.NewResourceEventHandler(q)
-		informer := informerFactory.K8slab().V1alpha1().ConfigMapClaimOwners()
-		informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc:    eh.Add,
-			UpdateFunc: eh.Update,
-			DeleteFunc: eh.Delete,
-		})
-
-		stopCh := make(chan struct{})
-		informerFactory.Start(stopCh)
+		//q := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+		//crdClient := k8s.BuildConfigMapClaimOwnerInternalClient()
+		//informerFactory := crdinformers.NewSharedInformerFactory(crdClient, 0) // @TODO: time.Minute*1)
+		//eh := operator.NewResourceEventHandler(q)
+		//informer := informerFactory.K8slab().V1alpha1().ConfigMapClaimOwners()
+		//informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		//	AddFunc:    eh.Add,
+		//	UpdateFunc: eh.Update,
+		//	DeleteFunc: eh.Delete,
+		//})
+		//
+		//stopCh := make(chan struct{})
+		//informerFactory.Start(stopCh)
 
 		router := mux.NewRouter()
 		srv := &http.Server{
@@ -63,7 +58,7 @@ var internalCmd = &cobra.Command{
 		if err := srv.Close(); err != nil {
 			log.Errorf("unexpected error on http server close %v", err)
 		}
-		close(stopCh)
+		//close(stopCh)
 		log.Info("Stopping controller")
 	},
 }

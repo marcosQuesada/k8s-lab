@@ -5,7 +5,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	api "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sync"
 )
 
 // PoolController models an ordered set of workers
@@ -13,68 +12,56 @@ type PoolController interface {
 	UpdatePoolSize(ctx context.Context, namespace, name string, size int) error
 }
 
-// Handler handles statefulset state updates
+// Handler handles statefulSet state updates
 type Handler struct {
-	controller    PoolController
-	selector      SelectorStore
-	lastSizeIndex map[string]int
-	mutex         sync.RWMutex
+	controller PoolController
+	selector   SelectorStore
 }
 
 // NewHandler instantiates statefulset handler
 func NewHandler(c PoolController, s SelectorStore) *Handler {
 	return &Handler{
-		controller:    c,
-		selector:      s,
-		lastSizeIndex: map[string]int{},
+		controller: c,
+		selector:   s,
 	}
 }
 
-func (h *Handler) Handle(ctx context.Context, o runtime.Object) error {
+func (h *Handler) Create(ctx context.Context, o runtime.Object) error {
 	ss := o.(*api.StatefulSet)
 	if !h.selector.Matches(ss.Namespace, ss.Name, ss.Labels) {
 		log.Infof("Skipped sts event namespace %s name %s labels %v", ss.Namespace, ss.Name, ss.Labels)
 		return nil
 	}
 
-	if !h.hasLastSizeVariation(ss) {
-		return nil
-	}
-
-	log.Infof("Handle Statefulset Namespace %s name %s Replicas %d", ss.Namespace, ss.Name, uint64(*ss.Spec.Replicas))
+	log.Infof("Create Statefulset Namespace %s name %s Replicas %d", ss.Namespace, ss.Name, uint64(*ss.Spec.Replicas))
 
 	return h.controller.UpdatePoolSize(ctx, ss.Namespace, ss.Name, int(*ss.Spec.Replicas))
 }
 
-func (h *Handler) Delete(ctx context.Context, namespace, name string) error {
-	log.Infof("Deleted StatefulSet Namespace %s name %s", namespace, name)
-	if !h.selector.IsRegistered(namespace, name) {
-		log.Infof("Skipped sts delete event on namespace %s name %s", namespace, name)
+func (h *Handler) Update(ctx context.Context, o, n runtime.Object) error {
+	oss := o.(*api.StatefulSet)
+	nss := n.(*api.StatefulSet)
+	if !h.selector.Matches(oss.Namespace, oss.Name, oss.Labels) {
+		log.Infof("Skipped sts event namespace %s name %s labels %v", oss.Namespace, oss.Name, oss.Labels)
 		return nil
 	}
 
-	defer h.cleanLastSize(namespace, name)
-	return h.controller.UpdatePoolSize(ctx, namespace, name, 0)
-}
-
-func (h *Handler) hasLastSizeVariation(ss *api.StatefulSet) bool {
-	k := ss.Namespace + "/" + ss.Name
-	h.mutex.Lock()
-	defer func() {
-		h.lastSizeIndex[k] = int(*ss.Spec.Replicas)
-		h.mutex.Unlock()
-	}()
-
-	if _, ok := h.lastSizeIndex[k]; !ok {
-		h.lastSizeIndex[k] = 0
+	if oss.Spec.Replicas == nss.Spec.Replicas {
+		return nil
 	}
 
-	return int(*ss.Spec.Replicas) != h.lastSizeIndex[k]
+	log.Infof("Create Statefulset Namespace %s name %s Replicas %d", nss.Namespace, nss.Name, uint64(*nss.Spec.Replicas))
+
+	return h.controller.UpdatePoolSize(ctx, nss.Namespace, nss.Name, int(*nss.Spec.Replicas))
 }
 
-func (h *Handler) cleanLastSize(namespace, name string) {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+func (h *Handler) Delete(ctx context.Context, o runtime.Object) error {
+	sts := o.(*api.StatefulSet)
+	log.Infof("Deleted StatefulSet Namespace %s name %s", sts.Namespace, sts.Name)
+	if !h.selector.IsRegistered(sts.Namespace, sts.Name) {
+		log.Infof("Skipped sts delete event on namespace %s name %s", sts.Namespace, sts.Name)
+		return nil
+	}
 
-	delete(h.lastSizeIndex, namespace+"/"+name)
+	return h.controller.UpdatePoolSize(ctx, sts.Namespace, sts.Name, 0)
 }
