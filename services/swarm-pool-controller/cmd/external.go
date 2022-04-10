@@ -13,11 +13,13 @@ import (
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	crdinformers "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/informers/externalversions"
+	wp "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/pod"
 	statefulset "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
 	"os"
 	"os/signal"
@@ -66,7 +68,15 @@ var externalCmd = &cobra.Command{
 		appm := app.NewManager(ex, swl)
 		selSt := statefulset.NewSelectorStore()
 		pr := app.NewProvider(swl, stsl, podl)
-		ctl := app.NewSwarmController(swarmClientSet, selSt, appm, pr, operator.NewRunner())
+
+		kubeConfigPath := os.Getenv("HOME") + "/.kube/config"
+		restConfig, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+		if err != nil {
+			log.Fatalf("unable to get cluster config from flags, error %v", err)
+		}
+
+		wklpr := wp.NewProvider(clientSet, restConfig)
+		ctl := app.NewSwarmController(swarmClientSet, selSt, appm, pr, wklpr, operator.NewRunner())
 		go ctl.Run(ctx)
 
 		crdh := crd.NewHandler(ctl)

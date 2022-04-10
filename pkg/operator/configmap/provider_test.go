@@ -23,7 +23,7 @@ func TestNewProvider_ItUpdatesConfigMapOnAssignWorkload(t *testing.T) {
 	}
 	spew.Dump(cm.Data)
 
-	p := NewProvider(clientset, namespace, configMapName)
+	p := NewProvider(clientset)
 	w := &config.Workloads{
 		Version: 1,
 		Workloads: map[string]*config.Workload{
@@ -33,7 +33,7 @@ func TestNewProvider_ItUpdatesConfigMapOnAssignWorkload(t *testing.T) {
 		},
 	}
 
-	if err := p.Set(context.Background(), w); err != nil {
+	if err := p.Set(context.Background(), namespace, configMapName, w); err != nil {
 		t.Fatalf("unexepcted error setting workload %v, got %v", w, err)
 	}
 }
@@ -52,8 +52,8 @@ func TestNewProvider_ItGetsWorkloadsFromConfigMap(t *testing.T) {
 	}
 	spew.Dump(cm.Data)
 
-	p := NewProvider(clientset, namespace, configMapName)
-	w, err := p.Get(context.Background())
+	p := NewProvider(clientset)
+	w, err := p.Get(context.Background(), namespace, configMapName)
 	if err != nil {
 		t.Fatalf("unexepcted error setting workload %v, got %v", w, err)
 	}
