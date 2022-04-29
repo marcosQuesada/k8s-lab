@@ -23,7 +23,8 @@ func TestController_ItGetsCreatedOnListeningPodsWithPodAddition(t *testing.T) {
 	cl := fake.NewSimpleClientset(p)
 	i := informers.NewSharedInformerFactory(cl, 0)
 	pi := i.Core().V1().Pods()
-	ctl := New(eh, pi.Informer(), "Pod")
+	fr := &fakeRunner{}
+	ctl := New(eh, pi.Informer(), fr, "Pod")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -89,7 +90,8 @@ func TestController_ItGetsDeletedOnListeningPodsWithPodAdditionWithoutBeingPrelo
 	cl := fake.NewSimpleClientset()
 	i := informers.NewSharedInformerFactory(cl, 0)
 	pi := i.Core().V1().Pods()
-	ctl := New(eh, pi.Informer(), "Pod")
+	fr := &fakeRunner{}
+	ctl := New(eh, pi.Informer(), fr, "Pod")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -121,15 +123,21 @@ type fakeHandler struct {
 	totalDeleted int32
 }
 
-func (f *fakeHandler) Handle(ctx context.Context, o runtime.Object) error {
+func (f *fakeHandler) Create(ctx context.Context, o runtime.Object) error {
 	atomic.AddInt32(&f.totalCreated, 1)
 	return nil
 }
 
-func (f *fakeHandler) Delete(ctx context.Context, namespace, name string) error {
+func (f *fakeHandler) Update(ctx context.Context, o, n runtime.Object) error {
+	atomic.AddInt32(&f.totalCreated, 1)
+	return nil
+}
+
+func (f *fakeHandler) Delete(ctx context.Context, o runtime.Object) error {
 	atomic.AddInt32(&f.totalDeleted, 1)
 	return nil
 }
+
 func (f *fakeHandler) created() int32 {
 	return atomic.LoadInt32(&f.totalCreated)
 }
@@ -159,4 +167,14 @@ func getFakePod(namespace, name string) *apiv1.Pod {
 			RestartPolicy: apiv1.RestartPolicyNever,
 		},
 	}
+}
+
+type fakeRunner struct{}
+
+func (f fakeRunner) Process(e interface{}) {
+
+}
+
+func (f fakeRunner) Run(ctx context.Context, h func(context.Context, interface{}) error) {
+
 }

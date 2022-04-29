@@ -14,7 +14,7 @@ func TestItConsumesProducedEntriesWithSuccess(t *testing.T) {
 		atomic.AddInt32(&totalCalls, 1)
 		return nil
 	}
-	r := NewRunner()
+	r := NewRunner().(*runner)
 	r.workerFrequency = time.Millisecond * 50
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 	defer cancel()
@@ -34,7 +34,7 @@ func TestItRetriesConsumedEntriesOnHandlingErrorUntilMaxRetries(t *testing.T) {
 		atomic.AddInt32(&totalCalls, 1)
 		return errors.New("foo error")
 	}
-	r := NewRunner()
+	r := NewRunner().(*runner)
 	r.workerFrequency = time.Millisecond * 50
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

@@ -9,7 +9,7 @@ spec:
   selector:
     matchLabels:
       app: swarm-worker
-  serviceName: swarm-worker
+  serviceName: swarm-worker-headless
   replicas: 2
   template:
     metadata:
@@ -61,6 +61,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: swarm-worker-headless
+  namespace: swarm
   labels:
     app: swarm-worker
 spec:

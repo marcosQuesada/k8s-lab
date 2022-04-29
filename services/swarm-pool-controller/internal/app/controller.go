@@ -88,7 +88,7 @@ func (c *swarmController) handle(ctx context.Context, e interface{}) error {
 		if err != nil {
 			return errors.Wrap(err, "cannot process")
 		}
-		if err := c.checkWorkerVersion(ctx, e.namespace, n); err != nil {
+		if err := c.checkWorkerVersion(ctx, e.namespace, n); err != nil { // @TODO: Move them to conciliation loop
 			return errors.Wrap(err, "unable to check version")
 		}
 		return err
