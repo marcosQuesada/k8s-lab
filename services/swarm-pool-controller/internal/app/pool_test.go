@@ -18,7 +18,7 @@ func TestOnWorkerPoolUpdateStateGetsBalancedAndVersionUpdated(t *testing.T) {
 	size := 2
 	v, err := p.UpdateSize(context.Background(), size)
 	if err != nil {
-		t.Fatalf("unable to update size, error %v", err)
+		t.Fatalf("unable to process size, error %v", err)
 	}
 
 	newVersion := 2

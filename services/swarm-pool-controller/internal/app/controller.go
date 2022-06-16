@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
+	"github.com/marcosQuesada/k8s-lab/pkg/config"
 	"github.com/marcosQuesada/k8s-lab/pkg/operator"
 	swapi "github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/apis/swarm/v1alpha1"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/crd/generated/clientset/versioned"
 	"github.com/marcosQuesada/k8s-lab/services/swarm-pool-controller/internal/infra/k8s/statefulset"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	api "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,34 +27,40 @@ type Provider interface {
 	SwarmNameFromStatefulSetName(namespace, name string) (string, error)
 }
 
-// swarmController linearize incoming commands, concurrent processing wouldn't make sense
-type swarmController struct {
-	swarmClient   versioned.Interface
-	selectorStore statefulset.SelectorStore
-	manager       Manager
-	provider      Provider
-	runner        operator.Runner
+type WorkloadProvider interface {
+	Workload(ctx context.Context, namespace, name string) (*config.Workloads, error)
 }
 
-func NewSwarmController(cl versioned.Interface, ss statefulset.SelectorStore, m Manager, p Provider, r operator.Runner) *swarmController {
+// swarmController linearize incoming commands, concurrent processing wouldn't make sense
+type swarmController struct {
+	swarmClient      versioned.Interface
+	selectorStore    statefulset.SelectorStore
+	manager          Manager
+	provider         Provider
+	workloadProvider WorkloadProvider
+	runner           operator.Runner
+}
+
+func NewSwarmController(cl versioned.Interface, ss statefulset.SelectorStore, m Manager, p Provider, wp WorkloadProvider, r operator.Runner) *swarmController {
 	return &swarmController{
-		swarmClient:   cl,
-		selectorStore: ss,
-		manager:       m,
-		provider:      p,
-		runner:        r,
+		swarmClient:      cl,
+		selectorStore:    ss,
+		manager:          m,
+		provider:         p,
+		workloadProvider: wp,
+		runner:           r,
 	}
 }
 
 // Create swarm entry happens on swarm creation
 func (c *swarmController) Create(ctx context.Context, namespace, name string) error {
-	c.runner.Process(newProcessSwarm(namespace, name))
+	c.runner.Process(newCreateSwarm(namespace, name))
 	return nil
 }
 
-// Update swarm entry happens on swarm update
+// Update swarm entry happens on swarm process
 func (c *swarmController) Update(ctx context.Context, namespace, name string) error {
-	c.runner.Process(newProcessSwarm(namespace, name)) // @TODO: Improve this!
+	c.runner.Process(newUpdateSwarm(namespace, name))
 	return nil
 }
 
@@ -75,23 +83,51 @@ func (c *swarmController) Run(ctx context.Context) {
 func (c *swarmController) handle(ctx context.Context, e interface{}) error {
 	ev := e.(Event)
 	switch e := ev.(type) {
-	case processSwarm:
-		return c.process(ctx, e.namespace, e.name)
-	case updateSwarmSize:
-		return c.updatePool(ctx, e.namespace, e.name, e.size)
+	case createSwarm:
+		n, err := c.process(ctx, e.namespace, e.name)
+		if err != nil {
+			return errors.Wrap(err, "cannot process")
+		}
+		if err := c.checkWorkerVersion(ctx, e.namespace, n); err != nil { // @TODO: Move them to conciliation loop
+			return errors.Wrap(err, "unable to check version")
+		}
+		return err
+	case updateSwarm:
+		n, err := c.process(ctx, e.namespace, e.name) // @TODO: Temporal
+		if err != nil {
+			return errors.Wrap(err, "cannot process")
+		}
+		if err := c.checkWorkerVersion(ctx, e.namespace, n); err != nil {
+			return errors.Wrap(err, "unable to check version")
+		}
+		return err
 	case deleteSwarm:
 		return c.delete(ctx, e.namespace, e.name)
+	case updateSwarmSize:
+		return c.updatePool(ctx, e.namespace, e.name, e.size)
 	}
 
 	return fmt.Errorf("action %T not handled", ev)
 }
 
-// process happens on swarm create/update event
-func (c *swarmController) process(ctx context.Context, namespace, name string) error {
+func (c *swarmController) checkWorkerVersion(ctx context.Context, namespace string, names []string) error {
+	for _, s := range names {
+		w, err := c.workloadProvider.Workload(ctx, namespace, s)
+		if err != nil {
+			log.Errorf("unable to get workload, error %v", err)
+			continue
+		}
+
+		log.Infof("Worker pod %s on version %d", s, w.Version)
+	}
+	return nil
+}
+
+func (c *swarmController) process(ctx context.Context, namespace, name string) ([]string, error) {
 	log.Infof("Create swarm %s %s", namespace, name)
 	sw, err := c.provider.Swarm(namespace, name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Infof("Processing swarm %s namespace %s statefulset name %s configmap name %s version %d total workloads %d",
@@ -99,24 +135,30 @@ func (c *swarmController) process(ctx context.Context, namespace, name string) e
 
 	sts, err := c.provider.StatefulSet(sw.Namespace, sw.Spec.StatefulSetName)
 	if err != nil {
-		return fmt.Errorf("unable to get statefulset from swarm %s on namespace %s error %v", name, namespace, err)
+		return nil, errors.Wrap(err, fmt.Sprintf("unable to get statefulset from swarm %s on namespace %s", name, namespace))
 	}
 
 	// idempotent call
 	if err := c.selectorStore.Register(namespace, sts.Name, sts.Spec.Selector); err != nil {
-		return fmt.Errorf("unable to register key %s %s error %v", namespace, sts.Name, err)
+		return nil, fmt.Errorf("unable to register key %s %s error %v", namespace, sts.Name, err)
 	}
 
 	names, err := c.provider.PodNamesFromSelector(namespace, sts.Spec.Selector)
 	if err != nil {
-		return fmt.Errorf("unable to get pods from selector, error %v", err)
+		return nil, fmt.Errorf("unable to get pods from selector, error %v", err)
 	}
 
 	log.Infof("Controller found size %d worker pods %s", len(names), names)
+	if len(names) != int(*sts.Spec.Replicas) {
+		log.Errorf("unexpected statefulset pods, size %s names %v", int(*sts.Spec.Replicas), names)
+	}
 
 	c.manager.Process(ctx, namespace, name, sw.Spec.Version, sw.Spec.Workload)
 
-	return c.updatePool(ctx, namespace, sts.Name, int(*sts.Spec.Replicas))
+	if err := c.updatePool(ctx, namespace, sts.Name, int(*sts.Spec.Replicas)); err != nil {
+		return nil, errors.Wrap(err, "cannot update pool")
+	}
+	return names, nil
 }
 
 func (c *swarmController) updatePool(ctx context.Context, namespace, name string, size int) error {
@@ -129,12 +171,12 @@ func (c *swarmController) updatePool(ctx context.Context, namespace, name string
 
 	version, err := c.manager.UpdateSize(ctx, namespace, swarmName, size)
 	if err != nil {
-		return fmt.Errorf("unable to update swarm %s size error %v", swarmName, err)
+		return fmt.Errorf("unable to process swarm %s size error %v", swarmName, err)
 	}
 
 	_, err = c.updateSwarm(ctx, namespace, swarmName, version, size)
 	if err != nil {
-		return fmt.Errorf("unable to update swarm %s error %v", name, err)
+		return fmt.Errorf("unable to process swarm %s error %v", name, err)
 	}
 	return nil
 }
@@ -160,7 +202,7 @@ func (c *swarmController) updateSwarm(ctx context.Context, namespace, name strin
 	updatedSwarm.Spec.Version = version
 	swu, err := c.swarmClient.K8slabV1alpha1().Swarms(namespace).Update(ctx, updatedSwarm, metav1.UpdateOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("unable to update swarm %s error %v", sw.Name, err)
+		return nil, fmt.Errorf("unable to process swarm %s error %v", sw.Name, err)
 	}
 
 	return swu, nil

@@ -2,25 +2,39 @@ package app
 
 type action string
 
-const processSwarmAction = action("processSwarmAction")
+const createSwarmAction = action("createSwarmAction")
 const updateSwarmAction = action("updateSwarmAction")
+const updateSwarmSizeAction = action("updateSwarmSizeAction")
 const deleteSwarmAction = action("deleteSwarmAction")
 
 type Event interface {
 	Type() action
 }
 
-type processSwarm struct {
+type createSwarm struct {
 	namespace string
 	name      string
 }
 
-func newProcessSwarm(namespace, name string) processSwarm {
-	return processSwarm{namespace: namespace, name: name}
+func newCreateSwarm(namespace, name string) createSwarm {
+	return createSwarm{namespace: namespace, name: name}
 }
 
-func (e processSwarm) Type() action {
-	return processSwarmAction
+func (e createSwarm) Type() action {
+	return createSwarmAction
+}
+
+type updateSwarm struct {
+	namespace string
+	name      string
+}
+
+func newUpdateSwarm(namespace, name string) updateSwarm {
+	return updateSwarm{namespace: namespace, name: name}
+}
+
+func (e updateSwarm) Type() action {
+	return updateSwarmAction
 }
 
 type updateSwarmSize struct {
@@ -34,7 +48,7 @@ func newUpdateSwarmSize(namespace, name string, size int) updateSwarmSize {
 }
 
 func (e updateSwarmSize) Type() action {
-	return updateSwarmAction
+	return updateSwarmSizeAction
 }
 
 type deleteSwarm struct {

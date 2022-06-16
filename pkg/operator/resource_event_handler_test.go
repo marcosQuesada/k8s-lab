@@ -13,9 +13,9 @@ func TestResourceEventHandler_AddPodIncludesItemOnQueue(t *testing.T) {
 	name := "swarm-worker-0"
 	namespace := "swarm"
 	q := newFakeQueue()
-	reh := NewResourceEventHandler(q)
+	reh := NewResourceEventHandler()
 	p := getFakePod(namespace, name)
-	reh.Add(&p)
+	reh.Create(&p)
 
 	if expected, got := 1, q.Len(); expected != got {
 		t.Fatalf("unexpected queue size, expected %d got %d", expected, got)
@@ -38,9 +38,12 @@ func TestResourceEventHandler_UpdatePodIncludesItemOnQueue(t *testing.T) {
 	name := "swarm-worker-0"
 	namespace := "swarm"
 	q := newFakeQueue()
-	reh := NewResourceEventHandler(q)
+	reh := NewResourceEventHandler()
 	p := getFakePod(namespace, name)
-	reh.Update(&p, &p)
+	_, err := reh.Update(&p, &p) // @TODO: check event
+	if err != nil {
+		t.Fatalf("unexpected error updating resource %v", err)
+	}
 
 	if expected, got := 1, q.Len(); expected != got {
 		t.Fatalf("unexpected queue size, expected %d got %d", expected, got)
@@ -63,9 +66,12 @@ func TestResourceEventHandler_DeletePodIncludesItemOnQueue(t *testing.T) {
 	name := "swarm-worker-0"
 	namespace := "swarm"
 	q := newFakeQueue()
-	reh := NewResourceEventHandler(q)
+	reh := NewResourceEventHandler()
 	p := getFakePod(namespace, name)
-	reh.Delete(&p)
+	_, err := reh.Delete(&p) // @TODO: validate event
+	if err != nil {
+		t.Fatalf("unexpected error deleting resource %v", err)
+	}
 
 	if expected, got := 1, q.Len(); expected != got {
 		t.Fatalf("unexpected queue size, expected %d got %d", expected, got)

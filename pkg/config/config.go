@@ -3,8 +3,11 @@ package config
 import (
 	"fmt"
 	logger "github.com/marcosQuesada/k8s-lab/pkg/log"
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 	"os"
 )
 
@@ -116,6 +119,20 @@ func (a *Workload) Difference(newWorkload *Workload) (included, excluded []Job) 
 	}
 
 	return
+}
+
+func Decode(raw []byte) (*Workloads, error) {
+	data := make(map[interface{}]interface{})
+	if err := yaml.Unmarshal(raw, &data); err != nil {
+		return nil, errors.Wrap(err, "unable to unmarshall")
+	}
+
+	c := &Workloads{}
+	if err := mapstructure.Decode(data, c); err != nil {
+		return nil, errors.Wrap(err, "unable to decode")
+	}
+
+	return c, nil
 }
 
 func toMap(set []Job) map[string]struct{} {
